@@ -21,6 +21,7 @@
 *.app
 
 #others
+*.suo
 *.ncb
 *.user
 debug/
