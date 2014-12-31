@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="gb2312"?>
+<VisualStudioProject
+	ProjectType="Intel C++ Project"
+	Version="11.1"
+	Name="base"
+	ProjectGUID="{040F0FB4-1FD8-4083-9CC3-AFBC23C920CB}"
+	VCNestedProjectGUID="{6B68FF4F-9935-4088-897C-488D4FE69CD9}"
+	VCNestedProjectFileName="base.vcproj">
+	<Configurations>
+		<Configuration
+			Name="Debug|Win32">
+			<Tool
+				Name="CppCmplrTool"
+				Cpp0xSupport="false"/>
+		</Configuration>
+	</Configurations>
+	<Files/>
+</VisualStudioProject>
