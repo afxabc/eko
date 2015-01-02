@@ -10,21 +10,21 @@
 
 
 template <typename T>
-class Param
+class Parcel
 {
 public:
-	Param() : data_(NULL) {}
-	Param(const T& data) : data_(new T(data)) {}
+	Parcel() : data_(NULL) {}
+	Parcel(const T& data) : data_(new T(data)) {}
 
-	Param(const Param& param) : data_(NULL)
-	{ swap(param); }
+	Parcel(const Parcel& parcel) : data_(NULL)
+	{ swap(parcel); }
 
-	~Param()
+	~Parcel()
 	{ delete data_; }
 
-	Param& operator=(const Param& param)
+	Parcel& operator=(const Parcel& parcel)
 	{
-		swap(param);
+		swap(parcel);
 		return *this;
 	}
 
@@ -32,20 +32,20 @@ public:
 	{ return *data_; }
 
 private:
-	void swap(const Param& param)
+	void swap(const Parcel& parcel)
 	{
 		T* tmp = data_;
-		data_ = param.data_;
-		param.data_ = tmp;
+		data_ = parcel.data_;
+		parcel.data_ = tmp;
 	}
 
 	mutable T* data_;
 };
 
 template <typename T>
-inline Param<T> P(const T& data)
+inline Parcel<T> P(const T& data)
 { 
-	return Param<T>(data); 
+	return Parcel<T>(data); 
 }
 
 ////////////////////////////////////////////////
