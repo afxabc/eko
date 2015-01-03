@@ -53,14 +53,15 @@ bool Signal::wait(MicroSecond delay)
 #ifdef WIN32
 	DWORD rc = WaitForSingleObject(handle_, (int)delay);
 	return (rc == WAIT_OBJECT_0);
-	
+
 #else
     int  rc = pthread_mutex_lock(&mutex_);
     if ( rc != 0 )
 		return false;
-	
+
 	if (delay > 0)
 	{
+	/*
 		Timestamp exp = Timestamp::NOW()+delay;
 		UInt64 time = exp;
 
@@ -68,6 +69,12 @@ bool Signal::wait(MicroSecond delay)
 		tm.tv_sec = time / 1000;
 		tm.tv_nsec = (time % 1000) * 1000000L;
 		assert( tm.tv_nsec < 1000000000L );
+		*/
+
+		timespec tm;
+        clock_gettime(CLOCK_REALTIME, &tm);
+		tm.tv_sec += delay / 1000;
+		tm.tv_nsec += (delay % 1000) * 1000000L;
 
 		rc = 0;
 		while (!signal_ && rc == 0)
