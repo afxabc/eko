@@ -13,9 +13,9 @@ Timestamp Timestamp::NOW()
     li.HighPart = ft.dwHighDateTime;
     ms = li.QuadPart/10000;
 #else
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	ms = tv.tv_sec * 1000 + tv.tv_usec/1000;
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+	ms = ts.tv_sec * 1000 + ts.tv_nsec/1000000;
 #endif
 	return Timestamp(ms);
 }

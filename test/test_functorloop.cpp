@@ -13,7 +13,7 @@ static void callback(const string& str)
 	signal_.on();
 }
 
-void CHECK(bool condition, const char* sformat, ...)
+static void CHECK(bool condition, const char* sformat, ...)
 {
 	if (!condition)
 	{

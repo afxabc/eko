@@ -24,6 +24,11 @@
 *.suo
 *.ncb
 *.user
+*.cbp
+*.depend
+*.layout
+*.workspace
+
 debug/
 Debug/
 release/
