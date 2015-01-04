@@ -11,11 +11,11 @@ int main()
 {
     LOG(INFO);
 
-    test_queue();
+//  test_queue();
 //	test_buffer();
 //	test_functor();
 //	test_functorloop();
-//	test_signal();
+	test_signal();
 
 #ifdef WIN32
     system("pause");
