@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="base" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="Debug/base" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="Debug/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="Release/base" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="Release/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add directory="../" />
+		</Compiler>
+		<Unit filename="buffer.cpp" />
+		<Unit filename="buffer.h" />
+		<Unit filename="common.h" />
+		<Unit filename="functorloop.cpp" />
+		<Unit filename="functorloop.h" />
+		<Unit filename="functorqueue.cpp" />
+		<Unit filename="functorqueue.h" />
+		<Unit filename="log.cpp" />
+		<Unit filename="log.h" />
+		<Unit filename="mutex.cpp" />
+		<Unit filename="mutex.h" />
+		<Unit filename="queue.h" />
+		<Unit filename="signal.cpp" />
+		<Unit filename="signal.h" />
+		<Unit filename="thread.cpp" />
+		<Unit filename="thread.h" />
+		<Unit filename="timestamp.cpp" />
+		<Unit filename="timestamp.h" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

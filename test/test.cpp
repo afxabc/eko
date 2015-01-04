@@ -9,17 +9,17 @@ extern void test_signal();
 
 int main()
 {
-	LOG(INFO);
+    LOG(INFO);
 
-	test_queue();
+    test_queue();
 //	test_buffer();
 //	test_functor();
 //	test_functorloop();
 //	test_signal();
 
 #ifdef WIN32
-	system("pause");
+    system("pause");
 #endif
 
-	return 0;
+    return 0;
 }

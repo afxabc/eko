@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_workspace_file>
+	<Workspace title="eko">
+		<Project filename="base/base.cbp" />
+		<Project filename="net/net.cbp" />
+		<Project filename="test/test.cbp">
+			<Depends filename="base/base.cbp" />
+			<Depends filename="net/net.cbp" />
+		</Project>
+	</Workspace>
+</CodeBlocks_workspace_file>
