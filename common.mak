@@ -2,7 +2,7 @@
 #set 1 if make for debug
 STAGE_DEBUG := 1
 
-CROSSBUILD := /others/gcc-arm-2009q3/bin/arm-none-linux-gnueabi-
+CROSSBUILD := /others/arm-gcc/2009q3/bin/arm-none-linux-gnueabi-
 #LFLAGS := -static
 
 DEBUG_DIR = ./debug
