@@ -28,12 +28,12 @@ public:
 #endif
 	}
 
-	inline static UInt32 self()
+	inline static THREAD_ID self()
 	{
 #ifdef WIN32
-		return (UInt32)GetCurrentThreadId();
+		return (THREAD_ID)GetCurrentThreadId();
 #else
-		return (UInt32)pthread_self();
+		return (THREAD_ID)pthread_self();
 #endif
 	}
 
@@ -43,6 +43,7 @@ public:
 
 	bool started() { return run_; }
 	THREAD_ID id() { return thread_id_; }
+	bool isInThread() { return (thread_id_ == self()); }
 
 private:
 #ifdef WIN32

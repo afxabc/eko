@@ -64,7 +64,7 @@ void Thread::stop()
 	
 	run_ = false;
 #ifdef WIN32
-	if (thread_id_ != self())
+	if (!isInThread())
 	{
 		WaitForSingleObject(handle_, INFINITE);
 	}
@@ -75,7 +75,7 @@ void Thread::stop()
 	}
 #else
 	void* stat;
-	if (thread_id_ != self())
+	if (!isInThread())
 	{
 		pthread_join( thread_id_ , &stat );
 	}

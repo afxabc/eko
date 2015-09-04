@@ -38,26 +38,28 @@ struct pollfd {
 #define POLLHUP    0x0080  /* disconnected */
 #define POLLNVAL   0x1000  /* invalid file descriptor */
 
+typedef SOCKET FD;
 typedef int nfds_t;
 int poll(struct pollfd *fds, nfds_t numfds, int timeout);
+#define closefd(s) closesocket((s))
 
 #else	/*linux*/
 
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/socket.h>
+#include <sys/fd.h>
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
 
-typedef int SOCKET;
+typedef int FD;
 #define INVALID_SOCKET -1
-#define closesocket(s) close((s))
+#define closefd(s) close((s))
 
 #endif
 
-int socket_nonblock(SOCKET socket, int enable);
+int fd_nonblock(FD fd, int enable);
 
 #endif

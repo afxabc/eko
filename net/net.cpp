@@ -1,17 +1,17 @@
 #include "base/log.h"
 #include "net.h"
 
-int socket_nonblock(SOCKET socket, int enable)
+int fd_nonblock(FD fd, int enable)
 {
 #ifdef WIN32
     u_long param = enable;
-    return ioctlsocket(socket, FIONBIO, &param);
+    return ioctlsocket(fd, FIONBIO, &param);
 #else
-	int param = fcntl(socket, F_GETFL);
+	int param = fcntl(fd, F_GETFL);
 	if (enable)
 		param |= O_NONBLOCK;
 	else param &= ~O_NONBLOCK;
-	return fcntl(socket, F_SETFL, param);
+	return fcntl(fd, F_SETFL, param);
 #endif
 }
 

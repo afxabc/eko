@@ -5,24 +5,49 @@
 #include "signal.h"
 #include "functorqueue.h"
 
+
+typedef boost::function<void(MicroSecond)> WaitFunctor;
 class FunctorLoop : public boost::noncopyable
 {
 public:
 	FunctorLoop();
-	~FunctorLoop();
+	virtual ~FunctorLoop();
 
-	void loop();		//进入loop
-	void quit();		//退出loop
+	void loop() 
+	{ loopFun_(); }		//进入loop
 
-	void loopInThread()	//在新的线程loop
-	{ thread_.start(boost::bind(&FunctorLoop::loop, this)); }
+	bool loopInThread()	//在新的线程loop
+	{ return thread_.start(boost::bind(&FunctorLoop::loop, this)); }
 
-	UInt32 run(const Functor& func, MicroSecond delay = 0);
+	void quitLoop();		//退出loop
+
+	bool isInLoopThread()
+	{ return (threadId_ == Thread::self()); }
+
+	UInt32 runInLoop(const Functor& func, MicroSecond delay = 0);
 
 	bool cancel(UInt32 sequence)
 	{ return queue_.cancel(sequence); }
 
+	void setLoop(Functor fun)
+	{ loopFun_ = fun; }
+
+	void setWait(WaitFunctor fun)
+	{ waitFun_ = fun; }
+
+	void setWakeup(Functor fun)
+	{ wakeupFun_ = fun; }
+
 private:
+	void defaultLoop();
+	void defaultWait(MicroSecond ms);
+	void defaultWakeup();
+
+protected:
+	Functor loopFun_;
+	WaitFunctor waitFun_;
+	Functor wakeupFun_;
+
 	FunctorQueue queue_;
 	Thread thread_;
 	UInt32 threadId_;

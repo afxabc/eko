@@ -4,23 +4,26 @@
 #include "inetaddress.h"
 #include "base/timestamp.h"
 
-class Socket
+class PollerLoop;
+class PollerFd : public boost::enable_shared_from_this<PollerFd>
 {
 	//callback
 	typedef boost::function<void()> EventCallback;
 	typedef boost::function<void(Timestamp)> ReadEventCallback;
 
 public:
-	Socket(SOCKET socket = INVALID_SOCKET);
+	PollerFd(FD fd, PollerLoop* loop);
 
-	operator SOCKET() const { return socket_; }
-	SOCKET operator=(SOCKET socket)
+	operator FD() const { return fd_; }
+	FD operator=(FD fd)
 	{
-		socket_ = socket; 
-		return socket_;
+		fd_ = fd; 
+		return fd_;
 	}
 
 	//for poller
+	FD fd() const { return fd_; }
+
 	int index() { return index_; }
 	void set_index(int idx) { index_ = idx; }
 
@@ -44,17 +47,17 @@ public:
 	void setErrorCallback(const EventCallback& cb)
 	{ errorCallback_ = cb; }
 
-	void handleEvent(Timestamp receiveTime);
+	void handleEvent(Timestamp receiveTime, short revents);
 
 private:
-	void update() {}
+	void update();
 
 private:
-	SOCKET socket_;
-	InetAddress addr_;
+	FD fd_;
 
 	//for poller
-	int index_;
+	PollerLoop* loop_;
+	mutable int index_;
 	short events_;
 	short revents_;
 
@@ -65,6 +68,6 @@ private:
 	EventCallback errorCallback_;
 };
 
-typedef boost::shared_ptr<Socket> SocketPtr;
+typedef boost::shared_ptr<PollerFd> PollerFdPtr;
 
 #endif

@@ -195,6 +195,10 @@
 				RelativePath=".\test_queue.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\test_signal.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Í·ÎÄ¼þ"

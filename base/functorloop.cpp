@@ -2,16 +2,19 @@
 
 FunctorLoop::FunctorLoop() : threadId_(0), run_(false)
 {
+	loopFun_ = boost::bind(&FunctorLoop::defaultLoop, this);
+	waitFun_ = boost::bind(&FunctorLoop::defaultWait, this, _1);
+	wakeupFun_ = boost::bind(&FunctorLoop::defaultWakeup, this);
 }
 
 FunctorLoop::~FunctorLoop()
 {
-	quit();
+	quitLoop();
 }
 
-void FunctorLoop::loop()
+void FunctorLoop::defaultLoop()
 {
-	assert(!run_ && threadId_==0);
+	assert(!run_ && threadId_== 0);
 	threadId_ = Thread::self();
 
 	run_ = true;
@@ -23,24 +26,34 @@ void FunctorLoop::loop()
 
 	while(run_)
 	{
-		signal_.wait(delay);
+		waitFun_(delay);
 		delay = queue_.run();
 		if (delay == 0)
 			delay = TM;
 	}
 }
 
-UInt32 FunctorLoop::run(const Functor& func, MicroSecond delay)
+void FunctorLoop::defaultWait(MicroSecond delay)
+{
+	signal_.wait(delay);
+}
+
+void FunctorLoop::defaultWakeup()
+{
+	signal_.on();
+}
+
+UInt32 FunctorLoop::runInLoop(const Functor& func, MicroSecond delay)
 { 
 	UInt32 ret = queue_.post(func, delay);
-	signal_.on();
+	wakeupFun_();
 	return ret;
 }
 
-void FunctorLoop::quit()
+void FunctorLoop::quitLoop()
 {
 	run_ = false;
-	signal_.on();
+	wakeupFun_();
 	thread_.stop();
 	queue_.clear();
 }

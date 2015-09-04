@@ -1,16 +1,20 @@
 #include "base/log.h"
-#include "socket.h"
+#include "pollerfd.h"
+#include "pollerloop.h"
 
-Socket::Socket(SOCKET socket) 
-	: socket_(socket),
-	  index_(-1),
-	  events_(0),
-	  revents_(0)
+PollerFd::PollerFd(FD fd, PollerLoop* loop) 
+	: fd_(fd)
+	, loop_(loop)
+	, index_(-1)
+	, events_(0)
+	, revents_(0)
 {
 }
 
-void Socket::handleEvent(Timestamp receiveTime)
+void PollerFd::handleEvent(Timestamp receiveTime, short revents)
 {
+	revents_ = revents;
+
 	if ((revents_ & POLLHUP) && !(revents_ & POLLIN))
 	{
 		if (closeCallback_) closeCallback_();
@@ -18,7 +22,7 @@ void Socket::handleEvent(Timestamp receiveTime)
 
 	if (revents_ & POLLNVAL)
 	{
-		LOGW("Socket::handleEvent() POLLNVAL");
+		LOGW("PollerFd::handleEvent() POLLNVAL");
 	}
 
 	if (revents_ & (POLLERR | POLLNVAL))
@@ -35,4 +39,9 @@ void Socket::handleEvent(Timestamp receiveTime)
 	{
 		if (writeCallback_) writeCallback_();
 	}
+}
+
+void PollerFd::update()
+{
+	loop_->updatePoll(shared_from_this());
 }
