@@ -14,6 +14,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net", "net\net.vcproj", "{0
 		{6B68FF4F-9935-4088-897C-488D4FE69CD9} = {6B68FF4F-9935-4088-897C-488D4FE69CD9}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libeko", "libeko\libeko.vcproj", "{C98935EB-4C8E-4CB5-9EC8-8E098B673C6E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{07827FD0-C3FB-4FC0-8C0A-89B93CCB3448} = {07827FD0-C3FB-4FC0-8C0A-89B93CCB3448}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -32,6 +37,10 @@ Global
 		{07827FD0-C3FB-4FC0-8C0A-89B93CCB3448}.Debug|Win32.Build.0 = Debug|Win32
 		{07827FD0-C3FB-4FC0-8C0A-89B93CCB3448}.Release|Win32.ActiveCfg = Release|Win32
 		{07827FD0-C3FB-4FC0-8C0A-89B93CCB3448}.Release|Win32.Build.0 = Release|Win32
+		{C98935EB-4C8E-4CB5-9EC8-8E098B673C6E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C98935EB-4C8E-4CB5-9EC8-8E098B673C6E}.Debug|Win32.Build.0 = Debug|Win32
+		{C98935EB-4C8E-4CB5-9EC8-8E098B673C6E}.Release|Win32.ActiveCfg = Release|Win32
+		{C98935EB-4C8E-4CB5-9EC8-8E098B673C6E}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

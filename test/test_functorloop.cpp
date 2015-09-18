@@ -45,7 +45,7 @@ void test_functorloop()
     CHECK(ret, "callback timeout!!");
 
     LOGD("run in loop after 3s. ");
-	loop.runInLoop(boost::bind(callback, P(string("this is 3."))), 3000);
+    loop.runInLoop(boost::bind(callback, P(string("this is 3."))), 3000);
     LOGD("run in loop after 2s. ");
     loop.runInLoop(boost::bind(callback, P(string("this is 2."))), 2000);
     LOGD("run in loop after 1s. ");
@@ -64,5 +64,5 @@ void test_functorloop()
     ret = signal_.wait(1010);
     CHECK(ret, "callback timeout!!");
 
-	loop.quitLoop();
+    loop.quitLoop();
 }

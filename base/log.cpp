@@ -13,7 +13,7 @@ Log::Log() : level_(L_WARN), print_(new LogPrint)
 {
 }
 
-void Log::print(LEVEL level, const char* sformat, ...) 
+void Log::print(LEVEL level, const char* sformat, ...)
 {
 	static const int LOG_BUF_MAX = 1024;
 	char buf[LOG_BUF_MAX+1];

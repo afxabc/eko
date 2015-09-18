@@ -40,26 +40,55 @@ struct pollfd {
 
 typedef SOCKET FD;
 typedef int nfds_t;
+
+#define INVALID_FD INVALID_SOCKET
+
+inline int closefd(FD f)
+{ 
+	return closesocket(f);
+}
+
 int poll(struct pollfd *fds, nfds_t numfds, int timeout);
-#define closefd(s) closesocket((s))
 
 #else	/*linux*/
 
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/fd.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
 
+
 typedef int FD;
-#define INVALID_SOCKET -1
-#define closefd(s) close((s))
+#define INVALID_FD -1
+
+inline int closefd(FD f)
+{ 
+	return close(f);
+}
 
 #endif
 
+class InetAddress;
+class Buffer;
+
+void sock_init();
+
 int fd_nonblock(FD fd, int enable);
+int sock_resuseaddr(FD fd, int enable);
+int sock_bind(FD fd, const InetAddress& addr);
+
+int sock_sendto(FD fd, const InetAddress& peer, const char* data, int len);
+int sock_recvfrom(FD fd, InetAddress& from, Buffer& buf);
+int sock_recvfrom(FD fd, InetAddress& from, char* buf, UInt32 size);
+
+int sock_accept(FD fd, InetAddress& peer);
+int sock_connect(FD fd, InetAddress& peer);
+
+UInt32 sock_recvlength(FD fd);
 
 #endif

@@ -9,6 +9,10 @@ public:
 	InetAddress(UInt16 port = 0);
 	InetAddress(const std::string& ip, UInt16 port);
 	InetAddress(const struct sockaddr_in& addr) : sockaddr_(addr) {};
+	InetAddress(const InetAddress& inet)
+	{
+		sockaddr_ = inet.sockaddr_;
+	}
 
 	~InetAddress(void);
 
@@ -27,9 +31,14 @@ public:
 		return sizeof(sockaddr_); 
 	}
 
-	struct sockaddr_in& getSockaddr() const
+	struct sockaddr_in& getSockaddrIn() const
 	{ 
 		return sockaddr_; 
+	}
+	
+	struct sockaddr* getSockaddr() const
+	{
+		return (struct sockaddr*)(&sockaddr_);
 	}
 
 	UInt16 getPort() const
@@ -40,6 +49,7 @@ public:
 	std::string getIP() const;
 
 public:
+	void update(UInt16 port);
 	void update(const std::string& ip, UInt16 port);
 	void update(const std::string& str);
 

@@ -17,21 +17,21 @@
 
 class Buffer
 {
-	static const size_t kMiniSize = 1024;
+	static const size_t kMiniSize = 64;
 
 public:
 	Buffer(size_t initSize = kMiniSize);
 	Buffer(const char* data, size_t size);
-	Buffer(Buffer& rhs);
+	Buffer(const Buffer& rhs);
 
-	void swap(Buffer& rhs)
+	void swap(const Buffer& rhs)
 	{
 		buffer_.swap(rhs.buffer_);
 		std::swap(readerIndex_, rhs.readerIndex_);
 		std::swap(writerIndex_, rhs.writerIndex_);
 	}
 
-	Buffer& operator=(Buffer& rhs)
+	Buffer& operator=(const Buffer& rhs)
 	{
 		swap(rhs);
 		return *this;
@@ -78,6 +78,13 @@ public:
 		else readerIndex_ += len;
 	}
 
+	void writerIndexMove(int m)
+	{
+		writerIndex_ += m;
+		if (writerIndex_ > buffer_.size())
+			writerIndex_ = buffer_.size();
+	}
+
 	size_t pushBack(const char* data, size_t len, bool resize = true);
 	size_t pushBack(const char* str, bool resize = true)
 	{ return pushBack(str, ::strlen(str), resize); }
@@ -101,9 +108,9 @@ private:
 	void moveData(int span);
 
 private:
-	std::vector<char> buffer_;
-	size_t readerIndex_;
-	size_t writerIndex_;
+	mutable std::vector<char> buffer_;
+	mutable size_t readerIndex_;
+	mutable size_t writerIndex_;
 };
 
 

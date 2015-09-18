@@ -19,8 +19,9 @@ LIBPATH := \
 
 LIBS := \
 -lbase \
-#-lrt \
-#-lpthread 
+-lnet \
+-lrt \
+-lpthread 
 
 GCC := $(CROSSBUILD)g++
 AR := $(CROSSBUILD)ar

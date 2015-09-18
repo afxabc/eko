@@ -1,8 +1,9 @@
-#ifndef NET_SOCKET_H__
-#define NET_SOCKET_H__
+#ifndef NET_POLLERFD_H__
+#define NET_POLLERFD_H__
 
 #include "inetaddress.h"
 #include "base/timestamp.h"
+#include "base/signal.h"
 
 class PollerLoop;
 class PollerFd : public boost::enable_shared_from_this<PollerFd>
@@ -12,13 +13,21 @@ class PollerFd : public boost::enable_shared_from_this<PollerFd>
 	typedef boost::function<void(Timestamp)> ReadEventCallback;
 
 public:
-	PollerFd(FD fd, PollerLoop* loop);
+	PollerFd(PollerLoop* loop);
 
 	operator FD() const { return fd_; }
 	FD operator=(FD fd)
 	{
 		fd_ = fd; 
+		if (isValid())
+			sigClose_.off();
+		else sigClose_.on();
 		return fd_;
+	}
+
+	bool isValid()
+	{
+		return (fd_ != INVALID_FD);
 	}
 
 	//for poller
@@ -30,12 +39,14 @@ public:
 	void set_revents(short revt) { revents_ = revt; }
 
 	short events() const { return events_; }
-	void enableReading() { events_ |= (POLLIN | POLLPRI); update(); }
-	void disableReading() { events_ &= ~(POLLIN | POLLPRI); update(); }
-	void enableWriting() { events_ |= POLLOUT; update(); }
-	void disableWriting() { events_ &= ~POLLOUT; update(); }
-	void disableAll() { events_ = 0; update(); }
 	bool isWriting() const { return ((events_ & POLLOUT) != 0); }
+
+	void enableReading(bool forceInLoop = false) { events_ |= (POLLIN | POLLPRI); update(forceInLoop); }
+	void disableReading(bool forceInLoop = false) { events_ &= ~(POLLIN | POLLPRI); update(forceInLoop); }
+	void enableWriting(bool forceInLoop = false) { events_ |= POLLOUT; update(forceInLoop); }
+	void disableWriting(bool forceInLoop = false) { events_ &= ~POLLOUT; update(forceInLoop); }
+	void disableAll(bool forceInLoop = false) { events_ = 0; update(forceInLoop); }
+
 	
 	//callback
 	void setReadCallback(const ReadEventCallback& cb)
@@ -49,11 +60,16 @@ public:
 
 	void handleEvent(Timestamp receiveTime, short revents);
 
+	void close();
+	void waitForClose()
+	{ sigClose_.wait(); }
+
 private:
-	void update();
+	void update(bool forceInLoop);
 
 private:
 	FD fd_;
+	Signal sigClose_;
 
 	//for poller
 	PollerLoop* loop_;

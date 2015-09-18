@@ -17,6 +17,8 @@ void* Thread::_threadFunc(void* p)
    Thread* pth = static_cast < Thread* > (p);
    pth->func_();
 
+   pth->stop();
+
 #ifdef WIN32
    _endthreadex(0);
 #endif
@@ -45,6 +47,8 @@ bool Thread::start(const Functor& func)
 		return false;
 
 	func_ = func;
+
+	run_ = true;
 
 #ifdef WIN32
 	handle_ = (HANDLE)_beginthreadex(NULL, 0, _threadFunc, this, 0, &thread_id_);

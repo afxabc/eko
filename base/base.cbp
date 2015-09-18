@@ -4,14 +4,14 @@
 	<Project>
 		<Option title="base" />
 		<Option pch_mode="2" />
-		<Option compiler="arm-android_gcc_compiler" />
+		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="Debug/base" prefix_auto="1" extension_auto="1" />
+				<Option output="../debug/base" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="" />
-				<Option object_output="Debug/" />
+				<Option object_output="debug/" />
 				<Option type="2" />
-				<Option compiler="arm-android_gcc_compiler" />
+				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-Wall" />
@@ -19,11 +19,11 @@
 				</Compiler>
 			</Target>
 			<Target title="Release">
-				<Option output="Release/base" prefix_auto="1" extension_auto="1" />
+				<Option output="../release/base" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="" />
-				<Option object_output="Release/" />
+				<Option object_output="release/" />
 				<Option type="2" />
-				<Option compiler="arm-android_gcc_compiler" />
+				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-Wall" />
@@ -46,6 +46,8 @@
 		<Unit filename="functorqueue.h" />
 		<Unit filename="log.cpp" />
 		<Unit filename="log.h" />
+		<Unit filename="md5.cpp" />
+		<Unit filename="md5.h" />
 		<Unit filename="mutex.cpp" />
 		<Unit filename="mutex.h" />
 		<Unit filename="queue.h" />

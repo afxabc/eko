@@ -62,19 +62,31 @@ extern Log& LOG_;
 #define LOG(x) LOG_.setLevel(Log::L_##x)
 
 #define LOGI(...)	\
-	if (LOG_.checkLevel(Log::L_INFO))	\
-		LOG_.print(Log::L_INFO, __VA_ARGS__)
+	do	\
+	{	\
+		if (LOG_.checkLevel(Log::L_INFO))	\
+			LOG_.print(Log::L_INFO, __VA_ARGS__);	\
+	}while(0)
 
 #define LOGD(...)	\
-	if (LOG_.checkLevel(Log::L_DEBUG))	\
-		LOG_.print(Log::L_DEBUG, __VA_ARGS__)
+	do	\
+	{	\
+		if (LOG_.checkLevel(Log::L_DEBUG))	\
+			LOG_.print(Log::L_DEBUG, __VA_ARGS__);	\
+	}while(0)
 
 #define LOGW(...)	\
-	if (LOG_.checkLevel(Log::L_WARN))	\
-		LOG_.print(Log::L_WARN, __VA_ARGS__)
+	do	\
+	{	\
+		if (LOG_.checkLevel(Log::L_WARN))	\
+			LOG_.print(Log::L_WARN, __VA_ARGS__);	\
+	}while(0)
 
 #define LOGE(...)	\
-	if (LOG_.checkLevel(Log::L_ERROR))	\
-		LOG_.print(Log::L_ERROR, __VA_ARGS__)
+	do	\
+	{	\
+		if (LOG_.checkLevel(Log::L_ERROR))	\
+			LOG_.print(Log::L_ERROR, __VA_ARGS__);	\
+	}while(0)
 
 #endif

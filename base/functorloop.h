@@ -11,15 +11,17 @@ class FunctorLoop : public boost::noncopyable
 {
 public:
 	FunctorLoop();
-	virtual ~FunctorLoop();
+	~FunctorLoop();
 
-	void loop() 
-	{ loopFun_(); }		//进入loop
+	bool isRun()
+	{ return run_; }
+
+	void loop(); //进入loop
+
+	void quitLoop();		//退出loop
 
 	bool loopInThread()	//在新的线程loop
 	{ return thread_.start(boost::bind(&FunctorLoop::loop, this)); }
-
-	void quitLoop();		//退出loop
 
 	bool isInLoopThread()
 	{ return (threadId_ == Thread::self()); }
@@ -37,6 +39,12 @@ public:
 
 	void setWakeup(Functor fun)
 	{ wakeupFun_ = fun; }
+
+	MicroSecond runQueue()		//运行到时的函数
+	{ return queue_.run(); }
+
+	int getPending()
+	{ return queue_.size(); }
 
 private:
 	void defaultLoop();

@@ -163,6 +163,22 @@
 				RelativePath=".\pollerloop.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\pollersig.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\tcpclient.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\tcpserver.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\udp.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Í·ÎÄ¼þ"
@@ -183,6 +199,22 @@
 			</File>
 			<File
 				RelativePath=".\pollerloop.h"
+				>
+			</File>
+			<File
+				RelativePath=".\pollersig.h"
+				>
+			</File>
+			<File
+				RelativePath=".\tcpclient.h"
+				>
+			</File>
+			<File
+				RelativePath=".\tcpserver.h"
+				>
+			</File>
+			<File
+				RelativePath=".\udp.h"
 				>
 			</File>
 		</Filter>

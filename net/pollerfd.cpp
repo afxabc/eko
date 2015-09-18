@@ -2,13 +2,15 @@
 #include "pollerfd.h"
 #include "pollerloop.h"
 
-PollerFd::PollerFd(FD fd, PollerLoop* loop) 
-	: fd_(fd)
+PollerFd::PollerFd(PollerLoop* loop) 
+	: fd_(INVALID_FD)
 	, loop_(loop)
 	, index_(-1)
 	, events_(0)
 	, revents_(0)
 {
+	assert(loop != NULL);
+	sigClose_.off();
 }
 
 void PollerFd::handleEvent(Timestamp receiveTime, short revents)
@@ -41,7 +43,23 @@ void PollerFd::handleEvent(Timestamp receiveTime, short revents)
 	}
 }
 
-void PollerFd::update()
+void PollerFd::update(bool forceInLoop)
 {
-	loop_->updatePoll(shared_from_this());
+	if (forceInLoop)	
+		loop_->runInLoop(boost::bind(&PollerLoop::updatePoll, loop_, shared_from_this()));
+	else loop_->updatePoll(shared_from_this());
+}
+
+void PollerFd::close()
+{
+	assert(loop_->isInLoopThread());
+	
+	if (isValid())
+	{
+		loop_->removePoll(shared_from_this());
+		closefd(fd_);
+		fd_ = INVALID_FD;
+	}
+
+	sigClose_.on();
 }

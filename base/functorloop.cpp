@@ -14,12 +14,7 @@ FunctorLoop::~FunctorLoop()
 
 void FunctorLoop::defaultLoop()
 {
-	assert(!run_ && threadId_== 0);
-	threadId_ = Thread::self();
-
-	run_ = true;
 	signal_.off();
-	queue_.clear();
 
 	static const int TM = 5000;
 	MicroSecond delay(TM);
@@ -50,10 +45,28 @@ UInt32 FunctorLoop::runInLoop(const Functor& func, MicroSecond delay)
 	return ret;
 }
 
+void FunctorLoop::loop()
+{
+	assert(!run_ && threadId_== 0);
+	threadId_ = Thread::self();
+
+	run_ = true;
+//	queue_.clear();
+
+	if (loopFun_)
+		loopFun_();
+
+	run_ = false;
+	queue_.clear();
+	threadId_ = 0;
+}
+
 void FunctorLoop::quitLoop()
 {
-	run_ = false;
-	wakeupFun_();
-	thread_.stop();
-	queue_.clear();
+	if (run_)
+	{
+		run_ = false;
+		wakeupFun_();
+		thread_.stop();
+	}
 }

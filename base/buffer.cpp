@@ -11,7 +11,7 @@ Buffer::Buffer(const char* data, size_t size) : buffer_((size>kMiniSize)?size:kM
 	std::copy(data, data+size, buffer_.begin());
 }
 
-Buffer::Buffer(Buffer& rhs) : readerIndex_(0), writerIndex_(0)
+Buffer::Buffer(const Buffer& rhs) : readerIndex_(0), writerIndex_(0)
 {
 	swap(rhs);
 }

@@ -1,24 +1,37 @@
 #include "pollerloop.h"
 
 PollerLoop::PollerLoop()
+	: sigPtr_(new PollerSig(this))
+	, sigMark_(false)
 {
-	setLoop(boost::bind(&PollerLoop::pollLoop, this));
-	setWakeup(boost::bind(&PollerLoop::pollWakeup, this));
+	loop_.setLoop(boost::bind(&PollerLoop::pollLoop, this));
+	loop_.setWakeup(boost::bind(&PollerLoop::pollWakeup, this));
 }
 
 PollerLoop::~PollerLoop()
 {
+	loop_.quitLoop();
 }
 
 void PollerLoop::updatePoll(const PollerFdPtr& fdptr)
-{
+{		
+//	assert(fdptr->fd() != INVALID_FD);
+
 	if (!isInLoopThread())
 	{
 		runInLoop(boost::bind(&PollerLoop::updatePoll, this, fdptr));
 		return;
 	}
 
+	if (fdptr->fd() == INVALID_FD)
+		return;
+
 	BOOST_AUTO(it, fdptrs_.find(fdptr->fd()));
+
+	if (it == fdptrs_.end())
+	{
+		fdptr->set_index(-1);
+	}
 
 	if (fdptr->index() < 0)		//new one
 	{
@@ -33,6 +46,8 @@ void PollerLoop::updatePoll(const PollerFdPtr& fdptr)
 		int idx = static_cast<int>(pollfds_.size())-1;
 		fdptr->set_index(idx);
 		fdptrs_[pfd.fd] = fdptr;
+	
+		LOGI("updatePoll : [%d]=%d", fdptr->index(), fdptr->fd());
 	}
 	else
 	{
@@ -47,15 +62,21 @@ void PollerLoop::updatePoll(const PollerFdPtr& fdptr)
 		pfd.events = fdptr->events();
 		pfd.revents = 0;
 	}
+	
 }
 
 void PollerLoop::removePoll(const PollerFdPtr& fdptr)
 {
+	assert(fdptr->fd() != INVALID_FD);
+
 	if (!isInLoopThread())
 	{
 		runInLoop(boost::bind(&PollerLoop::removePoll, this, fdptr));
 		return;
 	}
+
+	if (fdptr->fd() == INVALID_FD)
+		return;
 
 	BOOST_AUTO(it, fdptrs_.find(fdptr->fd()));
 	
@@ -64,6 +85,8 @@ void PollerLoop::removePoll(const PollerFdPtr& fdptr)
 
 	int idx = fdptr->index();
 	assert(0 <= idx && idx < static_cast<int>(pollfds_.size()));
+
+	LOGI("removePoll : [%d]=%d", fdptr->index(), fdptr->fd());
 
 	fdptrs_.erase(it);
 
@@ -74,54 +97,87 @@ void PollerLoop::removePoll(const PollerFdPtr& fdptr)
 		fdptrs_[fdEnd]->set_index(idx);
 	}
 	pollfds_.pop_back();
+	
+	fdptr->set_index(-1);
+
 }
 
 void PollerLoop::pollLoop()
 {
-	assert(!run_ && threadId_== 0);
-	threadId_ = Thread::self();
-
-	run_ = true;
-	queue_.clear();
+	
+	LOGI("PollerLoop enter.");
 
 	static const int TM = 5000;
 	MicroSecond delay(TM);
 
-	while(run_)
+	sigPtr_->open();
+
+	while (loop_.isRun())
 	{
-		int numEvents = ::poll(&*pollfds_.begin(), pollfds_.size(), delay);
-		int savedErrno = ::error_n();
+		assert(pollfds_.size() > 0);
+
+		int numEvents = 0;
+		int savedErrno = 0;
   
+		if (!sigMark_)
+		{
+			numEvents = ::poll(&*pollfds_.begin(), pollfds_.size(), delay);
+			savedErrno = ::error_n();
+		}
+		
+		sigMark_ = false;
+
+		bool queueRun = false;
 		if (numEvents == 0)
 		{
-			LOGI("poll nothing, check for timeout fuction");
-			delay = queue_.run();
-			if (delay == 0)
-				delay = TM;
-			continue;
+//			LOGI("poll nothing, check for timeout fuction");
+			queueRun = true;
 		}
 		else if (numEvents < 0)
 		{
 			LOGE("poll error: %d !!", savedErrno);
 			continue;
 		}
-
-		//numEvents > 0
-		Timestamp now;
-		BOOST_AUTO(pfd, pollfds_.begin());
-		for (; pfd != pollfds_.end() && numEvents > 0; ++pfd)
+		else	//numEvents > 0
 		{
-			if (pfd->revents > 0)
+			Timestamp now;
+			BOOST_AUTO(pfd, pollfds_.begin());
+			for (int i=0; i<pollfds_.size() && numEvents > 0; ++i)
 			{
-				--numEvents;
-				BOOST_AUTO(it, fdptrs_.find(pfd->fd));
-				assert(it != fdptrs_.end());
-				it->second->handleEvent(now, pfd->revents);
+				if (pollfds_[i].revents > 0)
+				{
+					if (pollfds_[i].fd == sigPtr_->fd())
+						queueRun = true;
+
+					--numEvents;
+					BOOST_AUTO(it, fdptrs_.find(pollfds_[i].fd));
+					assert(it != fdptrs_.end());
+					it->second->handleEvent(now, pollfds_[i].revents);
+					pollfds_[i].revents = 0;
+				}
 			}
 		}
+
+		if (queueRun)
+		{
+			delay = loop_.runQueue();
+			if (delay == 0)
+				delay = TM;
+		}
 	}
+
+	sigPtr_->close();
+	pollfds_.clear();
+	fdptrs_.clear();
+			
+	LOGI("PollerLoop quit.");
 }
 
 void PollerLoop::pollWakeup()
 {
+	if (sigPtr_ && sigPtr_->isOpen())
+	{
+		sigPtr_->signal();
+	}
+	else sigMark_ = true;
 }
