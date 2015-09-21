@@ -8,9 +8,10 @@
 #include <string>
 
 static const UInt16 svrPort = 17766;
-static InetAddress peer("127.0.0.1", 17766);
+static InetAddress peer;
 static Signal sg;
 static bool run = false;
+static bool pause_ = false;
 static int epnum = 0;
 static UInt32 recvCount;
 static UInt32 lost;
@@ -18,7 +19,7 @@ static Timestamp recvTm;
 
 static void sendThread(UdpPtr uptr)
 {
-    static const int MAX_BUF = 65000;
+    static const int MAX_BUF = 1500;
     char buf[MAX_BUF+128];
 
     LOGI("send thread enter.");
@@ -29,8 +30,15 @@ static void sendThread(UdpPtr uptr)
     lost = 0;
     recvCount = 0;
     recvTm = Timestamp::NOW();
+	pause_ = false;
     while (run)
     {
+		if (pause_)
+		{
+			sg.wait(1000);
+			continue;
+		}
+
         int len = rand()%MAX_BUF+64;
         *((int*)buf) = num;
         MD5 md5(buf, len);
@@ -87,7 +95,14 @@ void test_udp(const char* str)
 {
     sock_init();
 
-	peer = InetAddress(str, svrPort);
+    if (!str)
+    {
+        printf("enter peer ip : ");
+        char line[64]; // room for 20 chars + '\0'
+        fgets(line, sizeof(line)-1, stdin);
+        peer = InetAddress(line, svrPort);
+    }
+    else peer = InetAddress(str, svrPort);
 
     PollerLoop loop;
     UdpPtr uptr(new Udp(&loop));
@@ -119,7 +134,9 @@ void test_udp(const char* str)
                 if (rate > 1024)
                     rate /= 1024, c = 'M';
 
-                LOGI("rate=%.2f%c  lost=%.1f%%(%d/%d)", rate, c, (float)lost*100/epnum, lost, epnum);
+				if (epnum > 0)
+					LOGI("rate=%.2f%c  lost=%.1f%%(%d/%d)", rate, c, (float)lost*100/epnum, lost, epnum);
+				else LOGI("rate=%.2f%c", rate, c);
 
                 recvCount = 0;
                 recvTm = Timestamp::NOW();
@@ -131,6 +148,14 @@ void test_udp(const char* str)
             run = false;
             sg.on();
             thread.stop();
+            break;
+        case 'p':
+        case 'P':
+            pause_ = !pause_;
+            sg.on();
+			if (pause_)
+				LOGI("send pause ...");
+			else LOGI("send continue ...");
             break;
         case 'q':
         case 'Q':

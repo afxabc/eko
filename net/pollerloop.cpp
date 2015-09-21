@@ -1,7 +1,8 @@
 #include "pollerloop.h"
 
 PollerLoop::PollerLoop()
-	: sigPtr_(new PollerSig(this))
+	: pollfdsChanged_(false)
+	, sigPtr_(new PollerSig(this))
 	, sigMark_(false)
 {
 	loop_.setLoop(boost::bind(&PollerLoop::pollLoop, this));
@@ -46,6 +47,8 @@ void PollerLoop::updatePoll(const PollerFdPtr& fdptr)
 		int idx = static_cast<int>(pollfds_.size())-1;
 		fdptr->set_index(idx);
 		fdptrs_[pfd.fd] = fdptr;
+
+		pollfdsChanged_ = true;
 	
 		LOGI("updatePoll : [%d]=%d", fdptr->index(), fdptr->fd());
 	}
@@ -100,6 +103,7 @@ void PollerLoop::removePoll(const PollerFdPtr& fdptr)
 	
 	fdptr->set_index(-1);
 
+	pollfdsChanged_ = true;
 }
 
 void PollerLoop::pollLoop()
@@ -144,6 +148,9 @@ void PollerLoop::pollLoop()
 			BOOST_AUTO(pfd, pollfds_.begin());
 			for (int i=0; i<pollfds_.size() && numEvents > 0; ++i)
 			{
+				if (pollfdsChanged_)
+					break;
+
 				if (pollfds_[i].revents > 0)
 				{
 					if (pollfds_[i].fd == sigPtr_->fd())
@@ -152,11 +159,14 @@ void PollerLoop::pollLoop()
 					--numEvents;
 					BOOST_AUTO(it, fdptrs_.find(pollfds_[i].fd));
 					assert(it != fdptrs_.end());
-					it->second->handleEvent(now, pollfds_[i].revents);
+					short revents = pollfds_[i].revents;
 					pollfds_[i].revents = 0;
+					it->second->handleEvent(now, revents);
 				}
 			}
 		}
+
+		pollfdsChanged_ = false;
 
 		if (queueRun)
 		{

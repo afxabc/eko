@@ -80,13 +80,14 @@ void TcpClient::close()
 {
 	if (!isOpen())
 		return;
-
 	isOpen_ = false;
-	loop_->runInLoop(boost::bind(&TcpClient::closeInLoop, this));
 
 	if (!loop_->isInLoopThread())
+	{
+		loop_->runInLoop(boost::bind(&TcpClient::closeInLoop, this));
 		fdptr_->waitForClose();
-
+	}
+	else closeInLoop();
 }
 
 void TcpClient::closeInLoop()
@@ -179,10 +180,10 @@ int TcpClient::sendData(const char* data, int len)
 
 void TcpClient::handleFdRead(Timestamp receiveTime)
 {
-	assert(loop_->isInLoopThread());
-
 	if (!isOpen())
 		return;
+
+	assert(loop_->isInLoopThread());
 
 	char buf[4096];
 	int len = recv(*fdptr_, buf, 4096, 0);
@@ -198,10 +199,10 @@ void TcpClient::handleFdRead(Timestamp receiveTime)
 
 void TcpClient::handleFdWrite()
 {
-	assert(loop_->isInLoopThread());
-
 	if (!isOpen())
 		return;
+
+	assert(loop_->isInLoopThread());
 
 	if (conn_ == CONNECTING)
 	{

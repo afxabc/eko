@@ -50,6 +50,9 @@ public:
 	int getSendPending() const
 	{ return sendBuff_.readableBytes(); }
 
+	FD fd() const
+	{ return fdptr_->fd(); }
+
 private:
 	void tryConnect();
 	void handleFdRead(Timestamp receiveTime);

@@ -33,7 +33,7 @@ bool Udp::open(UInt16 port)
 	if (fdptr_->isValid())
 		return false;
 
-	local_.update("127.0.0.1", port);
+	local_.update("0.0.0.0", port);
 
 	FD fd = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if ( fd == INVALID_FD )
@@ -64,17 +64,28 @@ bool Udp::open(UInt16 port)
 
 void Udp::close()
 {
+	if (!isOpen())
+		return;
+	isOpen_ = false;
+
 	if (!loop_->isInLoopThread())
 	{
-		if (!isOpen())
-			return;
-		isOpen_ = false;
-		loop_->runInLoop(boost::bind(&Udp::close, this));
+		loop_->runInLoop(boost::bind(&Udp::closeInLoop, this));
 		fdptr_->waitForClose();
-		return;
 	}
+	else closeInLoop();
+}
+
+void Udp::closeInLoop()
+{
+	assert(loop_->isInLoopThread());
 
 	isOpen_ = false;
+
+	{
+		Lock lock(mutexSend_);
+		sendQueue_.clear();
+	}
 
 	fdptr_->close();
 }

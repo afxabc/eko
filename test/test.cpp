@@ -18,8 +18,8 @@ int main(int argc, const char* argv[])
 //	test_functor();
 //	test_functorloop();
 //	test_signal();
-//	test_udp(argv[1]);
-    test_tcp(argv[1]);
+	test_udp(argv[1]);
+//    test_tcp(argv[1]);
 
 #ifdef WIN32
     system("pause");

@@ -52,6 +52,7 @@ private:
 
 	typedef std::vector<pollfd> PollFdVec;
 	PollFdVec pollfds_;
+	bool pollfdsChanged_;
 
 	typedef std::map<FD, PollerFdPtr> PollerFdMap;
 	PollerFdMap fdptrs_;

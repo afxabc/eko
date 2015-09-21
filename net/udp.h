@@ -35,6 +35,7 @@ public:
 private:
 	void handleFdRead(Timestamp receiveTime);
 	void handleFdWrite();
+	void closeInLoop();
 
 private:
 	PollerLoop* loop_;

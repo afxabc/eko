@@ -17,7 +17,7 @@ static int epnum = 0;
 
 static void sendThread(TcpClientPtr uptr)
 {
-    static const int MAX_BUF = 6500;
+    static const int MAX_BUF = 65000;
     char buf[MAX_BUF+128];
 
     srand((unsigned int)time(NULL));
@@ -151,7 +151,7 @@ static void handleRead(Timestamp tm, Buffer buffer)
 static TcpClientPtr suptr;
 static void handleAccept(TcpClientPtr p)
 {
-    LOGI("accept from %s.", p->peer().toString().c_str());
+    LOGI("accept from %s, fd=%d", p->peer().toString().c_str(), p->fd());
     suptr = p;
     suptr->setReadCallback(boost::bind(&handleRead, _1, _2));
 }
