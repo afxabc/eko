@@ -1,5 +1,5 @@
 #ifndef _BASE_QUEUE_H__
-#define _BASE_QUEUE_H__ 
+#define _BASE_QUEUE_H__
 
 #include <deque>
 #include "mutex.h"
@@ -10,16 +10,33 @@ template <typename QDATA>
 class Queue
 {
 public:
-	Queue(unsigned int max = 0xffffffff) : sPut_(true) 
-	{ 
+	Queue(unsigned int max = 0xffffffff) : sPut_(true)
+	{
 		setMax(max);
 	}
 
-public:
-	bool put(QDATA& data, UInt32 tm_wait = 0, bool back = true);
-	bool get(QDATA& data, UInt32 tm_wait = 0, bool front = true);
+	bool putBack(const QDATA& data, UInt32 tm_wait = 0)
+	{
+		return put(data, tm_wait, true);
+	}
+
+	bool putFront(const QDATA& data, UInt32 tm_wait = 0)
+	{
+		return put(data, tm_wait, false);
+	}
+
+	bool getBack(QDATA& data, UInt32 tm_wait = 0)
+	{
+		return get(data, tm_wait, true);
+	}
+
+	bool getFront(QDATA& data, UInt32 tm_wait = 0)
+	{
+		return get(data, tm_wait, false);
+	}
+
 	void clear();
-	
+
 	void setMax(unsigned int max) {
 		max_ = max;
 		if (max_ == 0)
@@ -43,7 +60,12 @@ public:
 		return queue_.size();
 	}
 
-protected:
+private:
+	bool put(const QDATA& data, UInt32 tm_wait, bool back);
+	void erase(size_t len, bool back);
+	bool get(QDATA& data, UInt32 tm_wait, bool back);
+
+private:
 	typedef std::deque<QDATA> QUEUE;
 	QUEUE queue_;
 	mutable Mutex mutex_;
@@ -52,7 +74,7 @@ protected:
 };
 
 template <typename QDATA>
-bool Queue<QDATA>::put(QDATA& data, UInt32 tm_wait, bool back)
+bool Queue<QDATA>::put(const QDATA& data, UInt32 tm_wait, bool back)
 {
 	if (!sPut_.wait(tm_wait))
 		return false;
@@ -76,7 +98,7 @@ bool Queue<QDATA>::put(QDATA& data, UInt32 tm_wait, bool back)
 }
 
 template <typename QDATA>
-bool Queue<QDATA>::get(QDATA& data, UInt32 tm_wait, bool front)
+bool Queue<QDATA>::get(QDATA& data, UInt32 tm_wait, bool back)
 {
 	if (!sGet_.wait(tm_wait))
 		return false;
@@ -88,15 +110,15 @@ bool Queue<QDATA>::get(QDATA& data, UInt32 tm_wait, bool front)
 		return false;
 	}
 
-	if (front)
-	{
-		data = queue_.front();
-		queue_.pop_front();
-	}
-	else
+	if (back)
 	{
 		data = queue_.back();
 		queue_.pop_back();
+	}
+	else
+	{
+		data = queue_.front();
+		queue_.pop_front();
 	}
 
 	if (queue_.size() < max_)

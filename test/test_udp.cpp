@@ -19,7 +19,7 @@ static Timestamp recvTm;
 
 static void sendThread(UdpPtr uptr)
 {
-    static const int MAX_BUF = 1500;
+    static const int MAX_BUF = 65000;
     char buf[MAX_BUF+128];
 
     LOGI("send thread enter.");
@@ -63,11 +63,8 @@ static void sendThread(UdpPtr uptr)
     LOGI("send thread quit.");
 }
 
-static void handleRead(Timestamp tm, InetAddress addr, Buffer buffer)
+static void handleRead(InetAddress addr, char* buf, int len)
 {
-    int len = buffer.readableBytes();
-    char* buf = buffer.beginRead();
-
     recvCount += len;
     if (recvCount > 0x20000000)
     {
@@ -100,7 +97,9 @@ void test_udp(const char* str)
         printf("enter peer ip : ");
         char line[64]; // room for 20 chars + '\0'
         fgets(line, sizeof(line)-1, stdin);
-        peer = InetAddress(line, svrPort);
+		if (strlen(line) < 4)
+			peer = InetAddress(svrPort);
+        else peer = InetAddress(line, svrPort);
     }
     else peer = InetAddress(str, svrPort);
 

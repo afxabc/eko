@@ -10,7 +10,6 @@ class PollerFd : public boost::enable_shared_from_this<PollerFd>
 {
 	//callback
 	typedef boost::function<void()> EventCallback;
-	typedef boost::function<void(Timestamp)> ReadEventCallback;
 
 public:
 	PollerFd(PollerLoop* loop);
@@ -18,7 +17,7 @@ public:
 	operator FD() const { return fd_; }
 	FD operator=(FD fd)
 	{
-		fd_ = fd; 
+		fd_ = fd;
 		if (isValid())
 			sigClose_.off();
 		else sigClose_.on();
@@ -36,20 +35,55 @@ public:
 	int index() { return index_; }
 	void set_index(int idx) { index_ = idx; }
 
-	void set_revents(short revt) { revents_ = revt; }
-
 	short events() const { return events_; }
-	bool isWriting() const { return ((events_ & POLLOUT) != 0); }
 
-	void enableReading(bool forceInLoop = false) { events_ |= (POLLIN | POLLPRI); update(forceInLoop); }
-	void disableReading(bool forceInLoop = false) { events_ &= ~(POLLIN | POLLPRI); update(forceInLoop); }
-	void enableWriting(bool forceInLoop = false) { events_ |= POLLOUT; update(forceInLoop); }
-	void disableWriting(bool forceInLoop = false) { events_ &= ~POLLOUT; update(forceInLoop); }
-	void disableAll(bool forceInLoop = false) { events_ = 0; update(forceInLoop); }
+	void pollRead(bool enable = true)
+	{
+		if (enable)
+			events_ |= (POLLIN | POLLPRI);
+		else events_ &= ~(POLLIN | POLLPRI);
+		update();
+	}
 
-	
+	void pollWrite(bool enable = true)
+	{
+		if (enable)
+			events_ |= POLLOUT;
+		else events_ &= ~POLLOUT;
+		update();
+	}
+
+	//only for win32, force to write,
+	void triggerWrite()
+	{
+#ifdef WIN32
+		events_ |= POLLWRITE;
+		update();
+		events_ &= ~POLLWRITE;
+#endif
+	}
+
+	void pollConncet(bool enable = true)
+	{
+#ifdef WIN32
+		if (enable)
+			events_ |= POLLCONN;
+		else events_ &= ~POLLCONN;
+		update();
+#else
+		pollWrite(enable);
+#endif
+	}
+
+	void pollNone()
+	{
+		events_ = 0;
+		update();
+	}
+
+
 	//callback
-	void setReadCallback(const ReadEventCallback& cb)
+	void setReadCallback(const EventCallback& cb)
 	{ readCallback_ = cb; }
 	void setWriteCallback(const EventCallback& cb)
 	{ writeCallback_ = cb; }
@@ -58,14 +92,14 @@ public:
 	void setErrorCallback(const EventCallback& cb)
 	{ errorCallback_ = cb; }
 
-	void handleEvent(Timestamp receiveTime, short revents);
+	void handleEvent(short revents);
 
 	void close();
 	void waitForClose()
 	{ sigClose_.wait(); }
 
 private:
-	void update(bool forceInLoop);
+	void update();
 
 private:
 	FD fd_;
@@ -78,7 +112,7 @@ private:
 	short revents_;
 
 	//callback
-	ReadEventCallback readCallback_;
+	EventCallback readCallback_;
 	EventCallback writeCallback_;
 	EventCallback closeCallback_;
 	EventCallback errorCallback_;

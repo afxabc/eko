@@ -1,6 +1,7 @@
 #include "net/tcpclient.h"
 #include "net/tcpserver.h"
 #include "net/pollerloop.h"
+#include "net/ratecounter.h"
 #include "base/log.h"
 #include "base/thread.h"
 #include "base/signal.h"
@@ -9,13 +10,14 @@
 
 #include <string>
 
-static const UInt16 svrPort = 7788;
-static InetAddress svrAddr;
+static const UInt16 svrPort = 7798;
 static Signal sg;
 static bool run = false;
+static bool pause_ = false;
 static int epnum = 0;
+static RateCounter rateCounter(1024);
 
-static void sendThread(TcpClientPtr uptr)
+static void sendThread(TcpClientPtr uptr, InetAddress svrAddr)
 {
     static const int MAX_BUF = 65000;
     char buf[MAX_BUF+128];
@@ -26,8 +28,15 @@ static void sendThread(TcpClientPtr uptr)
     sg.on();
     int num = 0;
     epnum = 0;
+	pause_ = false;
 	while (run && uptr->isOpen())
     {
+		if (pause_)
+		{
+			sg.wait(1000);
+			continue;
+		}
+
         int len = rand()%MAX_BUF+64;
         int sz = len+16;
 
@@ -73,28 +82,18 @@ static void handleConnect(InetAddress addr, bool con)
     }
     else
     {
-        LOGI("can not connect to %s.(%d)", addr.toString().c_str(), error_n());
+        LOGI("disconnect from %s.(%d)", addr.toString().c_str(), error_n());
         run = false;
         sg.on();
     }
 }
 
 static Buffer recvBuff;
-static UInt32 recvCount;
-static Timestamp recvTm;
-static void handleRead(Timestamp tm, Buffer buffer)
+static void handleRead(char* buf, int len)
 {
-    int len = buffer.readableBytes();
-    char* buf = buffer.beginRead();
-
     assert(len > 0);
 
-    recvCount += len;
-    if (recvCount > 0x20000000)
-    {
-        recvCount = 0;
-        recvTm = Timestamp::NOW();
-    }
+	rateCounter.count(len);
 
     recvBuff.pushBack(buf, len, true);
 
@@ -154,23 +153,27 @@ static void handleAccept(TcpClientPtr p)
     LOGI("accept from %s, fd=%d", p->peer().toString().c_str(), p->fd());
     suptr = p;
     suptr->setReadCallback(boost::bind(&handleRead, _1, _2));
+    suptr->setConnectCallback(boost::bind(&handleConnect, _1, _2));
 }
 
 void test_tcp(const char* str)
 {
     sock_init();
 
+    InetAddress svrAddr;
     if (!str)
     {
         printf("enter server ip : ");
         char line[64]; // room for 20 chars + '\0'
         fgets(line, sizeof(line)-1, stdin);
-        svrAddr = InetAddress(line, svrPort);
+		if (strlen(line) < 4)
+			svrAddr = InetAddress(svrPort);
+        else svrAddr = InetAddress(line, svrPort);
     }
     else svrAddr = InetAddress(str, svrPort);
 
     PollerLoop loop;
-    loop.loopInThread();
+	loop.loopInThread(Thread::THREAD_PRI_HIGHT);
 
     TcpServerPtr sptr(new TcpServer(&loop));
 //    sptr->open(svrAddr);
@@ -190,40 +193,52 @@ void test_tcp(const char* str)
         case 'o':
         case 'O':
             run = true;
-            thread.start(boost::bind(&sendThread, uptr));
+            thread.start(boost::bind(&sendThread, uptr, svrAddr));
+            break;
+        case '1':
+            run = true;
+            thread.start(boost::bind(&sendThread, uptr, InetAddress("10.10.3.100", svrPort)));
+            break;
+        case '2':
+            run = true;
+            thread.start(boost::bind(&sendThread, uptr, InetAddress("10.10.3.200", svrPort)));
             break;
         case 's':
         case 'S':
-            recvCount = 0;
-            recvBuff.erase();
-            recvTm = Timestamp::NOW();
-			sptr->open(svrAddr);
+			rateCounter.reset();
+			if (sptr->isOpen())
+				sptr->close();
+			else sptr->open(svrAddr);
             break;
         case 'l':
         case 'L':
         {
-            int ms = Timestamp::NOW()-recvTm;
-            if (ms > 0)
-            {
-                float rate = (float)recvCount/ms;
-                if (rate > 1024)
-                    LOGI("rate=%.2fM total=%X", rate/1024, recvCount);
-                else LOGI("rate=%.2fk total=%X", rate, recvCount);
-                LOGI("send buffer pending %d", uptr->getSendPending());
-                LOGI("recv buffer pending %d", recvBuff.readableBytes());
-                recvCount = 0;
-                recvTm = Timestamp::NOW();
-            }
+			float rate = (float)rateCounter.bytesPerSecond()/1000;
+            if (rate > 1024)
+                LOGI("rate=%.2fM", rate/1024);
+            else LOGI("rate=%.2fk", rate);
+            LOGI("send buffer pending %d", uptr->getSendPending());
+            LOGI("recv buffer pending %d", recvBuff.readableBytes());
+
         }
         break;
-        case 'c':
-        case 'C':
+        case 't':
             if (suptr)
                 suptr->close();
+            recvBuff.erase();
+			rateCounter.reset();
+            break;
+        case 'c':
             run = false;
 			sg.on();
             thread.stop();
-			sptr->close();
+            recvBuff.erase();
+			rateCounter.reset();
+            break;
+        case 'p':
+        case 'P':
+            pause_ = !pause_;
+            sg.on();
             break;
         case 'q':
         case 'Q':

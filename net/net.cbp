@@ -4,7 +4,7 @@
 	<Project>
 		<Option title="net" />
 		<Option pch_mode="2" />
-		<Option compiler="gcc" />
+		<Option compiler="android_gcc_compiler" />
 		<MakeCommands>
 			<Build command="" />
 			<CompileFile command="" />
@@ -32,7 +32,7 @@
 				<Option working_dir="" />
 				<Option object_output="release/" />
 				<Option type="2" />
-				<Option compiler="gcc" />
+				<Option compiler="android_gcc_compiler" />
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-Wall" />
@@ -53,6 +53,8 @@
 		<Unit filename="pollerloop.h" />
 		<Unit filename="pollersig.cpp" />
 		<Unit filename="pollersig.h" />
+		<Unit filename="ratecounter.cpp" />
+		<Unit filename="ratecounter.h" />
 		<Unit filename="tcpclient.cpp" />
 		<Unit filename="tcpclient.h" />
 		<Unit filename="tcpserver.cpp" />

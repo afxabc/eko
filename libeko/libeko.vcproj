@@ -27,7 +27,7 @@
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
-				CommandLine="lib.exe /out:$(SolutionDir)$(ConfigurationName)\libeko.lib $(SolutionDir)$(ConfigurationName)\base.lib $(SolutionDir)$(ConfigurationName)\net.lib"
+				CommandLine="lib $(SolutionDir)$(ConfigurationName)\base.lib $(SolutionDir)$(ConfigurationName)\net.lib /out:$(SolutionDir)$(ConfigurationName)\libeko.lib&#x0D;&#x0A;"
 				Outputs="$(SolutionDir)$(ConfigurationName)\libeko.lib"
 			/>
 			<Tool
@@ -59,7 +59,7 @@
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
-				CommandLine="lib.exe /out:$(SolutionDir)$(ConfigurationName)\libeko.lib $(SolutionDir)$(ConfigurationName)\base.lib $(SolutionDir)$(ConfigurationName)\net.lib"
+				CommandLine=""
 			/>
 			<Tool
 				Name="VCLibrarianTool"
@@ -78,6 +78,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="lib $(SolutionDir)$(ConfigurationName)\base.lib $(SolutionDir)$(ConfigurationName)\net.lib /out:$(SolutionDir)$(ConfigurationName)\libeko.lib"
 			/>
 		</Configuration>
 		<Configuration

@@ -8,7 +8,7 @@
 
 class PollerLoop;
 
-typedef boost::function<void(Timestamp, Buffer)> TcpReadCallback;
+typedef boost::function<void(char*, int)> TcpReadCallback;
 typedef boost::function<void(InetAddress, bool)> TcpConnectCallback;
 typedef boost::function<void(int)> TcpSendCallback;
 
@@ -19,8 +19,8 @@ public:
 	TcpClient(FD fd, PollerLoop* loop, InetAddress peer, int sendBuffInitSize = 4096);	//for server, accept
 	~TcpClient(void);
 
-	bool open(InetAddress peer);
-	bool open(const char* addr, UInt16 port);
+	bool open(InetAddress peer, UInt32 timeout = 5000);
+	bool open(const char* addr, UInt16 port, UInt32 timeout = 5000);
 	void close();
 	int sendData(const char* data, int len);
 
@@ -55,7 +55,8 @@ public:
 
 private:
 	void tryConnect();
-	void handleFdRead(Timestamp receiveTime);
+	void sendBuffer();
+	void handleFdRead();
 	void handleFdWrite();
 	void closeInLoop();
 	void handleConnectResult(bool conn, bool tmOut = false);
@@ -78,7 +79,7 @@ private:
 
 	bool isOpen_;
 
-	static const UInt32 CONNECT_TIMEOUT = 10000;
+	UInt32 timeOut_;
 	UInt32 connFuncID_;
 };
 

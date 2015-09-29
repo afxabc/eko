@@ -9,7 +9,7 @@
 
 class PollerLoop;
 
-typedef boost::function<void(Timestamp, InetAddress, Buffer)> UdpReadCallback;
+typedef boost::function<void(InetAddress, char*, int)> UdpReadCallback;
 
 class Udp : public boost::noncopyable
 {
@@ -33,7 +33,7 @@ public:
 	}
 
 private:
-	void handleFdRead(Timestamp receiveTime);
+	void handleFdRead();
 	void handleFdWrite();
 	void closeInLoop();
 

@@ -23,7 +23,7 @@ static void writer(const char* name, UInt32 span)
         string str(name);
         str += itos(count);
         LOGD("writer %s -> %s trying .....", name, str.c_str());
-        if (queue.put(str, span))
+        if (queue.putBack(str, span))
         {
             LOGD("writer %s -> %s [%d].", name, str.c_str(), queue.size());
             count++;
@@ -40,7 +40,7 @@ static void reader(const char* name, UInt32 span)
     while (test)
     {
         string str;
-        if (queue.get(str, span))
+        if (queue.getFront(str, span))
         {
             LOGD("reader %s === %s [%d].", name, str.c_str(), queue.size());
             Thread::sleep(span);
@@ -74,7 +74,7 @@ void test_queue()
         {
         case 'w':
         case 'W':
-            if (queue.put(str, 0))
+            if (queue.putBack(str, 0))
             {
                 LOGD("writer %s -> %s [%d].", name, str.c_str(), queue.size());
                 count++;

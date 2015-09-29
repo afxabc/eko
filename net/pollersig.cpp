@@ -11,35 +11,22 @@ PollerSig::PollerSig(PollerLoop* loop)
 	: loop_(loop)
 	, fdptr_(new PollerFd(loop))
 {
-	fdptr_->setReadCallback(boost::bind(&PollerSig::handleFdRead, this, _1));
+	sock_init();
+	fdptr_->setReadCallback(boost::bind(&PollerSig::handleFdRead, this));
 }
 
 PollerSig::~PollerSig(void)
 {
 }
 
-void PollerSig::handleFdRead(Timestamp receiveTime)
+void PollerSig::handleFdRead()
 {
 	assert(loop_->isInLoopThread());
 
 	if (!isOpen())
 		return;
 
-#ifdef SIG_UDP
-	UInt32 len = sock_recvlength(*fdptr_);
-	char buf[8];
-	while (len > 0)
-	{
-		InetAddress addr;
-		int sz = sock_recvfrom(*fdptr_, addr, buf, 8);
-		if (sz <= 0)
-		{
-			LOGE("sock_recvfrom error %d.", error_n());
-			break;
-		}
-		len = sock_recvlength(*fdptr_);
-	}
-#else
+#ifndef WIN32
     UInt64 val = 1;
 	read(*fdptr_, &val, sizeof(val));
 #endif
@@ -51,22 +38,8 @@ bool PollerSig::open()
 
 	if (!isOpen())
 	{
-#ifdef SIG_UDP
-		UInt16 port = 20000+rand()%(Thread::self());
-		addr_.update("127.0.0.1", port);
-		FD fd = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-		if ( fd == INVALID_FD )
-		{
-			LOGE("%s socket error.", __FILE__);
-			return false;
-		}
-		sock_resuseaddr(fd, 1);
-		if (sock_bind(fd, addr_) != 0)
-		{
-			LOGE("%s socket bind.", __FILE__);
-			closefd(fd);
-			return false;
-		}
+#ifdef WIN32
+		FD fd = SIG_FD;
 #elif defined(SIG_PIPE)
 		if (pipe(fdPipe_) < 0)
 		{
@@ -87,7 +60,7 @@ bool PollerSig::open()
 		*fdptr_ = fd;
 	}
 
-	fdptr_->enableReading();
+	fdptr_->pollRead();
 
 	return true;
 }
@@ -99,7 +72,9 @@ void PollerSig::close()
 	if (isOpen())
 	{
 		loop_->removePoll(fdptr_);
+#ifndef WIN32 
 		closefd(*fdptr_);
+#endif
 		*fdptr_ = INVALID_FD;
 	}
 
@@ -114,8 +89,8 @@ void PollerSig::signal()
 		return;
 
     UInt64 val = 1;
-#ifdef SIG_UDP
-	sock_sendto(*fdptr_, addr_, (char*)&val, sizeof(val));
+#ifdef WIN32
+//	sock_sendto(*fdptr_, addr_, (char*)&val, sizeof(val));
 #elif defined(SIG_PIPE)
 	write(fdPipe_[1], &val, sizeof(val));
 #else

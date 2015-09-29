@@ -15,7 +15,7 @@ PollerLoop::~PollerLoop()
 }
 
 void PollerLoop::updatePoll(const PollerFdPtr& fdptr)
-{		
+{
 //	assert(fdptr->fd() != INVALID_FD);
 
 	if (!isInLoopThread())
@@ -34,38 +34,67 @@ void PollerLoop::updatePoll(const PollerFdPtr& fdptr)
 		fdptr->set_index(-1);
 	}
 
+	int idx = -1;
 	if (fdptr->index() < 0)		//new one
 	{
 		assert(it == fdptrs_.end());
 
 		struct pollfd pfd;
 		pfd.fd = fdptr->fd();
-		pfd.events = fdptr->events();
+		pfd.events = 0;
 		pfd.revents = 0;
+#ifdef WIN32
+		pfd.wevent = WSACreateEvent();
+#endif
 		pollfds_.push_back(pfd);
 
-		int idx = static_cast<int>(pollfds_.size())-1;
+		idx = static_cast<int>(pollfds_.size())-1;
 		fdptr->set_index(idx);
 		fdptrs_[pfd.fd] = fdptr;
 
 		pollfdsChanged_ = true;
-	
-		LOGI("updatePoll : [%d]=%d", fdptr->index(), fdptr->fd());
+
+		LOGD("updatePoll : [%d]=%d", fdptr->index(), fdptr->fd());
+ //       LOGD("updatePoll : fdptr(%d) ref=%d", fdptr->fd(), fdptr.use_count());
 	}
 	else
 	{
 		assert(it != fdptrs_.end());
 		assert(fdptr == it->second);
-    
-		int idx = fdptr->index();
+
+		idx = fdptr->index();
 		assert(0 <= idx && idx < static_cast<int>(pollfds_.size()));
 
+	}
+
+	//set
+	if (idx >= 0)
+	{
 		struct pollfd& pfd = pollfds_[idx];
-		assert(pfd.fd == fdptr->fd());// || pfd.fd == -channel->fd()-1);		
+		assert(pfd.fd == fdptr->fd());// || pfd.fd == -channel->fd()-1);
 		pfd.events = fdptr->events();
 		pfd.revents = 0;
+
+#ifdef WIN32
+		long lEvents = 0;
+		lEvents |= (pfd.events&POLLIN)?(FD_READ|FD_ACCEPT|FD_CLOSE):0;
+		lEvents |= (pfd.events&POLLOUT)?(FD_WRITE):0;
+		lEvents |= (pfd.events&POLLCONN)?(FD_CONNECT):0;
+		if (SIG_FD != pfd.fd)
+		{
+			int ret = WSAEventSelect(pfd.fd, pfd.wevent, lEvents);
+			assert(ret != SOCKET_ERROR);
+
+			if (pfd.events & POLLWRITE)
+			{
+				pfd.revents |= POLLOUT;
+				WSASetEvent(pfd.wevent);
+			}
+		}
+
+#endif
 	}
-	
+
 }
 
 void PollerLoop::removePoll(const PollerFdPtr& fdptr)
@@ -82,14 +111,20 @@ void PollerLoop::removePoll(const PollerFdPtr& fdptr)
 		return;
 
 	BOOST_AUTO(it, fdptrs_.find(fdptr->fd()));
-	
+
 	assert(it != fdptrs_.end());
 	assert(fdptr == it->second);
 
 	int idx = fdptr->index();
 	assert(0 <= idx && idx < static_cast<int>(pollfds_.size()));
 
-	LOGI("removePoll : [%d]=%d", fdptr->index(), fdptr->fd());
+	LOGD("removePoll : [%d]=%d", fdptr->index(), fdptr->fd());
+
+	pollfds_[idx].events = 0;
+	pollfds_[idx].revents = 0;
+#ifdef WIN32
+	WSACloseEvent(pollfds_[idx].wevent);
+#endif
 
 	fdptrs_.erase(it);
 
@@ -100,16 +135,17 @@ void PollerLoop::removePoll(const PollerFdPtr& fdptr)
 		fdptrs_[fdEnd]->set_index(idx);
 	}
 	pollfds_.pop_back();
-	
+
 	fdptr->set_index(-1);
 
 	pollfdsChanged_ = true;
+
+//	LOGD("removePoll : fdptr(%d) ref=%d", fdptr->fd(), fdptr.use_count());
 }
 
 void PollerLoop::pollLoop()
 {
-	
-	LOGI("PollerLoop enter.");
+	LOGD("PollerLoop enter.");
 
 	static const int TM = 5000;
 	MicroSecond delay(TM);
@@ -122,13 +158,13 @@ void PollerLoop::pollLoop()
 
 		int numEvents = 0;
 		int savedErrno = 0;
-  
+
 		if (!sigMark_)
 		{
 			numEvents = ::poll(&*pollfds_.begin(), pollfds_.size(), delay);
 			savedErrno = ::error_n();
 		}
-		
+
 		sigMark_ = false;
 
 		bool queueRun = false;
@@ -144,31 +180,38 @@ void PollerLoop::pollLoop()
 		}
 		else	//numEvents > 0
 		{
-			Timestamp now;
 			BOOST_AUTO(pfd, pollfds_.begin());
-			for (int i=0; i<pollfds_.size() && numEvents > 0; ++i)
+			for (int i=0; i<pollfds_.size(); ++i)
 			{
-				if (pollfdsChanged_)
-					break;
+				if (pollfds_[i].revents <= 0)
+					continue;
 
-				if (pollfds_[i].revents > 0)
+				if (!pollfdsChanged_)
 				{
+
 					if (pollfds_[i].fd == sigPtr_->fd())
 						queueRun = true;
 
-					--numEvents;
+					//--numEvents;
 					BOOST_AUTO(it, fdptrs_.find(pollfds_[i].fd));
 					assert(it != fdptrs_.end());
 					short revents = pollfds_[i].revents;
 					pollfds_[i].revents = 0;
-					it->second->handleEvent(now, revents);
+					it->second->handleEvent(revents);
+
+		//			WSAResetEvent(pollfds_[i].wevent);
 				}
+#ifdef WIN32
+				else if (pollfds_[i].fd != sigPtr_->fd())
+					WSASetEvent(pollfds_[i].wevent);
+#endif
+
 			}
 		}
 
 		pollfdsChanged_ = false;
 
-		if (queueRun)
+		if (queueRun || loop_.getActPending() > 0)
 		{
 			delay = loop_.runQueue();
 			if (delay == 0)
@@ -179,15 +222,21 @@ void PollerLoop::pollLoop()
 	sigPtr_->close();
 	pollfds_.clear();
 	fdptrs_.clear();
-			
-	LOGI("PollerLoop quit.");
+
+	LOGD("PollerLoop quit.");
 }
 
 void PollerLoop::pollWakeup()
 {
 	if (sigPtr_ && sigPtr_->isOpen())
 	{
+#ifdef WIN32
+		int idx = sigPtr_->index();
+		struct pollfd& pfd = pollfds_[idx];
+		WSASetEvent(pfd.wevent);
+#else
 		sigPtr_->signal();
+#endif
 	}
 	else sigMark_ = true;
 }

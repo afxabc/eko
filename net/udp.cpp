@@ -8,8 +8,9 @@ Udp::Udp(PollerLoop* loop, UInt32 bufSize, UInt32 sendPend)
 	, bufSize_(bufSize)
 	, isOpen_(false)
 {
+	sock_init();
 	sendPend_ = (sendPend>0)?sendPend:1;
-	fdptr_->setReadCallback(boost::bind(&Udp::handleFdRead, this, _1));
+	fdptr_->setReadCallback(boost::bind(&Udp::handleFdRead, this));
 	fdptr_->setWriteCallback(boost::bind(&Udp::handleFdWrite, this));
 }
 
@@ -46,7 +47,6 @@ bool Udp::open(UInt16 port)
     fd_nonblock(fd, 1);
 	if (!local_.isNull())
 	{
-		sock_resuseaddr(fd, 1);
 		if (sock_bind(fd, local_) != 0)
 		{
 			LOGE("%s socket bind.", __FILE__);
@@ -57,7 +57,7 @@ bool Udp::open(UInt16 port)
 	}
 
 	*fdptr_ = fd;
-	fdptr_->enableReading();
+	fdptr_->pollRead();
 
 	return true;
 }
@@ -102,17 +102,17 @@ int Udp::sendData(InetAddress peer, const char* data, int len)
 		if (sendQueue_.size() < sendPend_)
 		{
 			Buffer buff(data, len);
-			sendQueue_.put(buff);
+			sendQueue_.putBack(buff);
 		}
 		else ret = 0;
 	}
 
-	fdptr_->enableWriting();
+	fdptr_->pollWrite();
 
 	return ret;
 }
 
-void Udp::handleFdRead(Timestamp receiveTime)
+void Udp::handleFdRead()
 {
 	assert(loop_->isInLoopThread());
 
@@ -131,7 +131,7 @@ void Udp::handleFdRead(Timestamp receiveTime)
 		}
 
 		if (cbRead_)
-			cbRead_(receiveTime, addr, Buffer(charBuf_.get(), sz));
+			cbRead_(addr, charBuf_.get(), sz);
 
 		len = sock_recvlength(*fdptr_);
 	}
@@ -152,16 +152,18 @@ void Udp::handleFdWrite()
 		while (sendQueue_.size() > 0)
 		{
 			int len = 0;
-			if (sendQueue_.get(buff))
-				len = sock_sendto(*fdptr_, peer_, buff.beginRead(), buff.readableBytes());
+			if (sendQueue_.getFront(buff))
+			{
+                len = sock_sendto(*fdptr_, peer_, buff.beginRead(), buff.readableBytes());
 
-			if (len < 0)
-				LOGE("sock_sendto error %d.", error_n());
-			else slen += len;
+                if (len <= 0)
+                    LOGE("sock_sendto return %d, error %d.", len, error_n());
+                else slen += len;
+			}
 		}
 
 		if (sendQueue_.size() == 0)
-			fdptr_->disableWriting();
+			fdptr_->pollWrite(false);
 	}
 
 //	if (cbSend_)

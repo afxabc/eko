@@ -11,15 +11,15 @@ extern void test_tcp(const char*);
 
 int main(int argc, const char* argv[])
 {
-    LOG(INFO);
+    LOG(DEBUG);
 
 //  test_queue();
 //	test_buffer();
 //	test_functor();
 //	test_functorloop();
 //	test_signal();
-	test_udp(argv[1]);
-//    test_tcp(argv[1]);
+//	test_udp(argv[1]);
+    test_tcp(argv[1]);
 
 #ifdef WIN32
     system("pause");

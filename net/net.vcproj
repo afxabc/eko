@@ -168,6 +168,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ratecounter.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\tcpclient.cpp"
 				>
 			</File>
@@ -203,6 +207,10 @@
 			</File>
 			<File
 				RelativePath=".\pollersig.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ratecounter.h"
 				>
 			</File>
 			<File

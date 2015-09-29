@@ -91,6 +91,9 @@ public:
 	size_t size()
 	{ return (tmQueue_.size()+actQueue_.size()); }
 
+	size_t actSize()
+	{ return actQueue_.size(); }
+
 	//debug
 	void dump();
 private:

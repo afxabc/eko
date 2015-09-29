@@ -18,6 +18,16 @@ public:
 	Thread(const Functor& func);
 	~Thread(void);
 	
+	enum ThreadPriority
+	{
+		THREAD_PRI_IDLE,
+		THREAD_PRI_LOW,
+		THREAD_PRI_NORMAL,
+		THREAD_PRI_HIGHT,
+		THREAD_PRI_CRITICAL,
+		THREAD_PRI_NONE,
+	};
+
 public:
 	inline static void sleep(MicroSecond ms)
 	{
@@ -38,7 +48,7 @@ public:
 	}
 
 public:
-	bool start(const Functor& func);
+	bool start(const Functor& func, ThreadPriority priority = THREAD_PRI_NONE);
 	void stop();
 
 	bool started() { return run_; }
@@ -52,12 +62,20 @@ private:
 	static void* _threadFunc(void* p);
 #endif
 
-protected:
-	bool run_;
-      HANDLE handle_;
-      THREAD_ID thread_id_;
+private:
+	static const int osThreadPriority[THREAD_PRI_NONE];
 
-	  Functor func_;
+private:
+	bool run_;
+	HANDLE handle_;
+	THREAD_ID thread_id_;
+
+	ThreadPriority priority_;
+	Functor func_;
+
+#ifndef WIN32
+	pthread_attr_t attr_;
+#endif
 };
 
 #endif

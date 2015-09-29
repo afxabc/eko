@@ -13,13 +13,14 @@ PollerFd::PollerFd(PollerLoop* loop)
 	sigClose_.off();
 }
 
-void PollerFd::handleEvent(Timestamp receiveTime, short revents)
+void PollerFd::handleEvent(short revents)
 {
 	revents_ = revents;
 
 	if ((revents_ & POLLHUP) && !(revents_ & POLLIN))
 	{
 		if (closeCallback_) closeCallback_();
+		return;
 	}
 
 	if (revents_ & POLLNVAL)
@@ -30,11 +31,12 @@ void PollerFd::handleEvent(Timestamp receiveTime, short revents)
 	if (revents_ & (POLLERR | POLLNVAL))
 	{
 		if (errorCallback_) errorCallback_();
+		return;
 	}
  
 	if (revents_ & (POLLIN | POLLPRI))			// | POLLRDHUP))
 	{
-		if (readCallback_) readCallback_(receiveTime);
+		if (readCallback_) readCallback_();
 	}
 
 	if (revents_ & POLLOUT)
@@ -43,11 +45,9 @@ void PollerFd::handleEvent(Timestamp receiveTime, short revents)
 	}
 }
 
-void PollerFd::update(bool forceInLoop)
+void PollerFd::update()
 {
-	if (forceInLoop)	
-		loop_->runInLoop(boost::bind(&PollerLoop::updatePoll, loop_, shared_from_this()));
-	else loop_->updatePoll(shared_from_this());
+	loop_->updatePoll(shared_from_this());
 }
 
 void PollerFd::close()
@@ -60,6 +60,9 @@ void PollerFd::close()
 		closefd(fd_);
 		fd_ = INVALID_FD;
 	}
+	events_ = 0;
+	revents_ = 0;
+	index_ = -1;
 
 	sigClose_.on();
 }

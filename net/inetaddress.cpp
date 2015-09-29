@@ -16,11 +16,13 @@ InetAddress::~InetAddress(void)
 
 void InetAddress::update(UInt16 port)
 {
+
 	memset((char*) &(sockaddr_), 0, sizeof((sockaddr_)));
 
 	sockaddr_.sin_family = AF_INET;
 	sockaddr_.sin_addr.s_addr = htonl(INADDR_ANY);
 	sockaddr_.sin_port = htons(port);
+	
 }
 
 void InetAddress::update(const std::string& ip, UInt16 port)

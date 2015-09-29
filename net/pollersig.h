@@ -7,10 +7,6 @@
 
 class PollerLoop;
 
-#ifdef WIN32
-#define SIG_UDP
-#endif
-
 class PollerSig
 {
 public:
@@ -31,17 +27,18 @@ public:
 		return fdptr_->fd();
 	}
 
+	int index()
+	{
+		return fdptr_->index();
+	}
+
 private:
-	void handleFdRead(Timestamp receiveTime);
+	void handleFdRead();
 
 private:
 	Mutex mutex_;
 	PollerLoop* loop_;
 	PollerFdPtr fdptr_;
-
-#ifdef SIG_UDP
-	InetAddress addr_;
-#endif
 
 #ifdef SIG_PIPE
 	int fdPipe_[2];

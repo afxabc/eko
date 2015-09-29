@@ -12,8 +12,8 @@ public:
 	{
 		L_ERROR = 0,
 		L_WARN,
-		L_DEBUG,
 		L_INFO,
+		L_DEBUG,
 		L_NONE,
 	};
 

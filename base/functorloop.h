@@ -20,8 +20,8 @@ public:
 
 	void quitLoop();		//退出loop
 
-	bool loopInThread()	//在新的线程loop
-	{ return thread_.start(boost::bind(&FunctorLoop::loop, this)); }
+	bool loopInThread(Thread::ThreadPriority pri = Thread::THREAD_PRI_NONE)	//在新的线程loop
+	{ return thread_.start(boost::bind(&FunctorLoop::loop, this), pri); }
 
 	bool isInLoopThread()
 	{ return (threadId_ == Thread::self()); }
@@ -45,6 +45,9 @@ public:
 
 	int getPending()
 	{ return queue_.size(); }
+
+	int getActPending()
+	{ return queue_.actSize(); }
 
 private:
 	void defaultLoop();

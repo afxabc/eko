@@ -9,7 +9,7 @@ Log& Log::defaultLog()
 	return log;
 }
 
-Log::Log() : level_(L_WARN), print_(new LogPrint)
+Log::Log() : level_(L_INFO), print_(new LogPrint)
 {
 }
 
@@ -21,8 +21,10 @@ void Log::print(LEVEL level, const char* sformat, ...)
 	va_list ap;
 	va_start(ap, sformat);
 	int len = 0;
+	/*
 	if (L_INFO != level)
 		len = Timestamp::NOW().toString(buf, LOG_BUF_MAX);
+		*/
 	len += vsnprintf(buf+len, LOG_BUF_MAX-len, sformat, ap);
 	buf[len] = 0;
 	va_end(ap);

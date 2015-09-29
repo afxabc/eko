@@ -19,10 +19,18 @@ typedef int socklen_t;
 #define S_IWUSR S_IWRITE
 #endif
 
+typedef SOCKET FD;
+typedef int nfds_t;
+
+#define INVALID_FD INVALID_SOCKET
+
+#define SIG_FD 0xFFFFFFF0
+
 struct pollfd {
-    int fd;
+    FD fd;
     short events;  /* events to look for */
     short revents; /* events that occurred */
+	WSAEVENT wevent;
 };
 /* events & revents */
 #define POLLIN     0x0001  /* any readable data available */
@@ -33,15 +41,13 @@ struct pollfd {
 #define POLLWRBAND 0x0010  /* priority data can be written */
 #define POLLPRI    0x0020  /* high priority readable data */
 
+#define POLLCONN   0x0040  /* for win32: wait for connect */
+#define POLLWRITE  0x0400  /* for win32: trigger to write */
+
 /* revents only */
 #define POLLERR    0x0004  /* errors pending */
 #define POLLHUP    0x0080  /* disconnected */
 #define POLLNVAL   0x1000  /* invalid file descriptor */
-
-typedef SOCKET FD;
-typedef int nfds_t;
-
-#define INVALID_FD INVALID_SOCKET
 
 inline int closefd(FD f)
 { 
@@ -88,6 +94,7 @@ int sock_recvfrom(FD fd, InetAddress& from, char* buf, UInt32 size);
 
 int sock_accept(FD fd, InetAddress& peer);
 int sock_connect(FD fd, InetAddress& peer);
+int sock_send(FD fd, const Buffer& buff);
 
 UInt32 sock_recvlength(FD fd);
 

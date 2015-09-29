@@ -42,9 +42,9 @@ int Timestamp::toString(char* buf, int size) const
 	static const int YEAR_BEGIN = 1900;
 #endif
 
-	return snprintf(buf, size, "%04d.%02d.%02d-%02d:%02d:%02d.%03d ",
+	return snprintf(buf, size, "%04d-%02d-%02d %02d:%02d:%02d ",
 				p->tm_year+YEAR_BEGIN, p->tm_mon+1, p->tm_mday,
-				p->tm_hour, p->tm_min, p->tm_sec, ms);
+				p->tm_hour, p->tm_min, p->tm_sec);
 }
 
 std::string Timestamp::toString() const

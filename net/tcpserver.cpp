@@ -6,7 +6,8 @@ TcpServer::TcpServer(PollerLoop* loop)
 	, fdptr_(new PollerFd(loop))
 	, isOpen_(false)
 {
-	fdptr_->setReadCallback(boost::bind(&TcpServer::handleFdRead, this, _1));
+	sock_init();
+	fdptr_->setReadCallback(boost::bind(&TcpServer::handleFdRead, this));
 }
 
 TcpServer::~TcpServer(void)
@@ -40,7 +41,6 @@ bool TcpServer::open(InetAddress local)
 		return false;
 	}
 
-	sock_resuseaddr(fd, 1);
     fd_nonblock(fd, 1);
 
 	if (sock_bind(fd, local_)!=0 || listen(fd, 5)<0)
@@ -52,7 +52,7 @@ bool TcpServer::open(InetAddress local)
 	}
 
 	*fdptr_ = fd;
-	fdptr_->enableReading();
+	fdptr_->pollRead();
 
 	return true;
 }
@@ -74,7 +74,7 @@ void TcpServer::close()
 	fdptr_->close();
 }
 
-void TcpServer::handleFdRead(Timestamp receiveTime)
+void TcpServer::handleFdRead()
 {
 	assert(loop_->isInLoopThread());
 
@@ -89,4 +89,6 @@ void TcpServer::handleFdRead(Timestamp receiveTime)
 		cbAccept_(TcpClientPtr(new TcpClient(fd, loop_, peer)));
 	}
 	else closefd(fd);
+	
+	fdptr_->pollRead();
 }

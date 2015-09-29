@@ -16,9 +16,9 @@ public:
 
 	~InetAddress(void);
 
-	bool isNull() const 
+	bool isNull() const
 	{
-		return (sockaddr_.sin_port == 0); 
+		return (sockaddr_.sin_port == 0);
 	}
 
 	bool operator==(const InetAddress& iaddr) const
@@ -27,23 +27,32 @@ public:
 	}
 
 	int getSize() const
-	{ 
-		return sizeof(sockaddr_); 
+	{
+		return sizeof(sockaddr_);
 	}
 
 	struct sockaddr_in& getSockaddrIn() const
-	{ 
-		return sockaddr_; 
+	{
+		return sockaddr_;
 	}
-	
+
 	struct sockaddr* getSockaddr() const
 	{
 		return (struct sockaddr*)(&sockaddr_);
 	}
 
 	UInt16 getPort() const
-	{ 
-		return ntohs(sockaddr_.sin_port); 
+	{
+		return ntohs(sockaddr_.sin_port);
+	}
+
+	UInt32 getIPInt() const
+	{
+	#ifdef WIN32
+		return ntohl(sockaddr_.sin_addr.S_un.S_addr);
+    #else
+		return ntohl(sockaddr_.sin_addr.s_addr);
+    #endif // WIN32
 	}
 
 	std::string getIP() const;
