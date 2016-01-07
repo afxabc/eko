@@ -37,6 +37,13 @@ public:
 		return *this;
 	}
 
+	Buffer& operator=(const char* str)
+	{
+		erase();
+		pushBack(str);
+		return *this;
+	}
+
 	size_t readableBytes() const
 	{ return writerIndex_ - readerIndex_; }
 
@@ -85,13 +92,15 @@ public:
 			writerIndex_ = buffer_.size();
 	}
 
+	size_t pushBack(size_t len, bool resize = true);
+	size_t pushBack(unsigned char ch, size_t len, bool resize = true);
 	size_t pushBack(const char* data, size_t len, bool resize = true);
-	size_t pushBack(const char* str, bool resize = true)
-	{ return pushBack(str, ::strlen(str), resize); }
+	size_t pushBack(const char* str)
+	{ return pushBack(str, ::strlen(str), true); }
 
 	size_t pushFront(const char* data, size_t len, bool resize = true);
-	size_t pushFront(const char* str, bool resize = true)
-	{ return pushFront(str, ::strlen(str), resize); }
+	size_t pushFront(const char* str)
+	{ return pushFront(str, ::strlen(str), true); }
 
 	size_t takeBack(char* buff, size_t size);
 	size_t takeFront(char* buff, size_t size);

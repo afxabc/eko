@@ -29,6 +29,11 @@ public:
 		return isOpen_;
 	}
 
+	bool isConnected()
+	{
+		return (conn_ == CONNECTED);
+	}
+
 	void setReadCallback(const TcpReadCallback& cb)
 	{
 		cbRead_ = cb;
@@ -48,7 +53,7 @@ public:
 	{ return peer_; }
 
 	int getSendPending() const
-	{ return sendBuff_.readableBytes(); }
+	{ return (int)sendBuff_.readableBytes(); }
 
 	FD fd() const
 	{ return fdptr_->fd(); }

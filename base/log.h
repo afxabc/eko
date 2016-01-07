@@ -4,7 +4,7 @@
 #include "common.h"
 #include "mutex.h"
 
-class LogPrint;
+
 class Log : boost::noncopyable
 {
 public:
@@ -16,6 +16,8 @@ public:
 		L_DEBUG,
 		L_NONE,
 	};
+
+	typedef boost::function<void(LEVEL, const char*)> LogPrint;
 
 	static Log& defaultLog();
 
@@ -29,37 +31,60 @@ public:
 		return level_ >= level;
 	}
 
-	inline void setPrint(LogPrint* print)
+	template<class R>
+	inline void setPrint(R r)
 	{
 		Lock lock(mutex_);
-		print_.reset(print);
+		print_ = boost::bind(r, _1, _2);
+	}
+
+	template<class R, class T>
+	inline void setPrint(R r, T t)
+	{
+		Lock lock(mutex_);
+		print_ = boost::bind(r, t, _1, _2);
+	}
+
+	inline void setPrint()
+	{
+		Lock lock(mutex_);
+		print_ = defPrint_;
 	}
 
 	void print(LEVEL level, const char* sformat, ...);
 
-protected:
+private:
 	Log();
 
-protected:
+private:
 	LEVEL level_;
-	boost::scoped_ptr<LogPrint> print_;
+	LogPrint print_;
+	LogPrint defPrint_;
 	Mutex mutex_;
 };
 
-class LogPrint
-{
-public:
-	virtual void print(Log::LEVEL level, const char* sformat)
-	{
-		puts(sformat);
-	}
-};
 
 extern Log& LOG_;
 
-#define LOGPRINT(x) LOG_.setPrint((x))
 
-#define LOG(x) LOG_.setLevel(Log::L_##x)
+inline void LOGPRINT()
+{
+	LOG_.setPrint();
+}
+
+template<class R>
+inline void LOGPRINT(R r)
+{
+	LOG_.setPrint(r);
+}
+
+template<class R, class T>
+inline void LOGPRINT(R r, T t)
+{
+	LOG_.setPrint(r, t);
+}
+
+#define LOGLEVEL(x) LOG_.setLevel(Log::L_##x)
 
 #define LOGI(...)	\
 	do	\

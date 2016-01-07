@@ -45,22 +45,18 @@ public:
 		update();
 	}
 
-	void pollWrite(bool enable = true)
+	void pollWrite(bool enable = true, bool forceWrite = false)		//forceWrite only for win32
 	{
 		if (enable)
 			events_ |= POLLOUT;
 		else events_ &= ~POLLOUT;
-		update();
-	}
 
-	//only for win32, force to write,
-	void triggerWrite()
-	{
 #ifdef WIN32
-		events_ |= POLLWRITE;
-		update();
-		events_ &= ~POLLWRITE;
+		if (forceWrite)
+			events_ |= POLLWRITE;
+		else events_ &= ~POLLWRITE;
 #endif
+		update();
 	}
 
 	void pollConncet(bool enable = true)

@@ -44,10 +44,10 @@ public:
 	{ return queue_.run(); }
 
 	int getPending()
-	{ return queue_.size(); }
+	{ return (int)queue_.size(); }
 
 	int getActPending()
-	{ return queue_.actSize(); }
+	{ return (int)queue_.actSize(); }
 
 private:
 	void defaultLoop();

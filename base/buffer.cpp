@@ -55,6 +55,37 @@ void Buffer::makeSpaceFront(size_t len)
 	moveData(len-prependableBytes());
 }
 
+size_t Buffer::pushBack(size_t len, bool resize)
+{
+	if (len == 0)
+		return 0;
+
+	if (writableBytes() < len)
+	{
+		if (resize)
+			makeSpaceBack(len);
+		else len = writableBytes();
+	}
+	writerIndex_ += len;
+	return len;
+}
+
+size_t Buffer::pushBack(unsigned char ch, size_t len, bool resize)
+{
+	if (len == 0)
+		return 0;
+
+	if (writableBytes() < len)
+	{
+		if (resize)
+			makeSpaceBack(len);
+		else len = writableBytes();
+	}
+	memset(beginWrite(), ch, len);
+	writerIndex_ += len;
+	return len;
+}
+
 size_t Buffer::pushBack(const char* data, size_t len, bool resize)
 {
 	if (data == NULL || len == 0)

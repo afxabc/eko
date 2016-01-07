@@ -1,5 +1,6 @@
 #include "net/udp.h"
 #include "net/pollerloop.h"
+#include "net/ratecounter.h"
 #include "base/log.h"
 #include "base/thread.h"
 #include "base/signal.h"
@@ -13,9 +14,9 @@ static Signal sg;
 static bool run = false;
 static bool pause_ = false;
 static int epnum = 0;
-static UInt32 recvCount;
 static UInt32 lost;
-static Timestamp recvTm;
+static RateCounter rateCounter(1024);
+static int waitTime_ = 0;
 
 static void sendThread(UdpPtr uptr)
 {
@@ -23,13 +24,11 @@ static void sendThread(UdpPtr uptr)
     char buf[MAX_BUF+128];
 
     LOGI("send thread enter.");
-    uptr->open(peer.getPort());
+    uptr->open(peer);
     sg.on();
     int num = 0;
     epnum = 0;
     lost = 0;
-    recvCount = 0;
-    recvTm = Timestamp::NOW();
 	pause_ = false;
     while (run)
     {
@@ -38,6 +37,9 @@ static void sendThread(UdpPtr uptr)
 			sg.wait(1000);
 			continue;
 		}
+
+		if (waitTime_ < 0)
+			sg.wait();
 
         int len = rand()%MAX_BUF+64;
         *((int*)buf) = num;
@@ -51,9 +53,10 @@ static void sendThread(UdpPtr uptr)
             slen = uptr->sendData(peer, buf, len);
             if (slen == 0)
             {
-                //		LOGI("send pending ...");
+             //   LOGI("send pending ...");
                 sg.wait(10);
             }
+			//else LOGI("send =======");
         }
         while (slen == 0 && run);
 
@@ -65,12 +68,7 @@ static void sendThread(UdpPtr uptr)
 
 static void handleRead(InetAddress addr, char* buf, int len)
 {
-    recvCount += len;
-    if (recvCount > 0x20000000)
-    {
-        recvCount = 0;
-        recvTm = Timestamp::NOW();
-    }
+	rateCounter.count(len);
 
     int num = *((int*)buf);
     if (num > epnum)
@@ -98,7 +96,7 @@ void test_udp(const char* str)
         char line[64]; // room for 20 chars + '\0'
         fgets(line, sizeof(line)-1, stdin);
 		if (strlen(line) < 4)
-			peer = InetAddress(svrPort);
+			peer = InetAddress("127.0.0.1", svrPort);
         else peer = InetAddress(line, svrPort);
     }
     else peer = InetAddress(str, svrPort);
@@ -120,33 +118,34 @@ void test_udp(const char* str)
         case 'o':
         case 'O':
             run = true;
+			waitTime_ = 0;
             thread.start(boost::bind(&sendThread, uptr));
             break;
         case 'l':
         case 'L':
         {
-            int ms = Timestamp::NOW()-recvTm;
-            if (ms > 0)
-            {
-                float rate = (float)recvCount/ms;
-                char c = 'k';
-                if (rate > 1024)
-                    rate /= 1024, c = 'M';
+			float rate = (float)rateCounter.bytesPerSecond()/1000;
+            char c = 'k';
+            if (rate > 1024)
+                rate /= 1024, c = 'M';
 
-				if (epnum > 0)
-					LOGI("rate=%.2f%c  lost=%.1f%%(%d/%d)", rate, c, (float)lost*100/epnum, lost, epnum);
-				else LOGI("rate=%.2f%c", rate, c);
+			if (epnum > 0)
+				LOGI("rate=%.2f%c  lost=%.1f%%(%d/%d)", rate, c, (float)lost*100/epnum, lost, epnum);
+			else LOGI("rate=%.2f%c", rate, c);
 
-                recvCount = 0;
-                recvTm = Timestamp::NOW();
-            }
         }
         break;
         case 'c':
         case 'C':
             run = false;
+			waitTime_ = 0;
             sg.on();
             thread.stop();
+            break;
+        case 's':
+        case 'S':
+			waitTime_ = -1;
+            sg.on();
             break;
         case 'p':
         case 'P':

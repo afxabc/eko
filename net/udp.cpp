@@ -19,14 +19,14 @@ Udp::~Udp(void)
 	close();
 }
 
-bool Udp::open(UInt16 port)
+bool Udp::open(InetAddress local)
 {
 	if (!loop_->isInLoopThread())
 	{
 		if (isOpen())
 			return false;
 		isOpen_ = true;
-		loop_->runInLoop(boost::bind(&Udp::open, this, port));
+		loop_->runInLoop(boost::bind(&Udp::open, this, local));
 		return true;
 	}
 
@@ -34,7 +34,7 @@ bool Udp::open(UInt16 port)
 	if (fdptr_->isValid())
 		return false;
 
-	local_.update("0.0.0.0", port);
+	local_ = local;
 
 	FD fd = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if ( fd == INVALID_FD )
@@ -107,7 +107,8 @@ int Udp::sendData(InetAddress peer, const char* data, int len)
 		else ret = 0;
 	}
 
-	fdptr_->pollWrite();
+	if (ret > 0)
+		fdptr_->pollWrite(true, true);	//for win32, force to write
 
 	return ret;
 }
@@ -157,13 +158,18 @@ void Udp::handleFdWrite()
                 len = sock_sendto(*fdptr_, peer_, buff.beginRead(), buff.readableBytes());
 
                 if (len <= 0)
-                    LOGE("sock_sendto return %d, error %d.", len, error_n());
+				{
+					sendQueue_.putFront(buff);
+					break;
+//					LOGE("sock_sendto return %d, error %d.", len, error_n());
+				}
                 else slen += len;
 			}
 		}
 
 		if (sendQueue_.size() == 0)
 			fdptr_->pollWrite(false);
+		else fdptr_->pollWrite(true);
 	}
 
 //	if (cbSend_)

@@ -112,7 +112,12 @@ void PollerLoop::removePoll(const PollerFdPtr& fdptr)
 
 	BOOST_AUTO(it, fdptrs_.find(fdptr->fd()));
 
-	assert(it != fdptrs_.end());
+//	assert(it != fdptrs_.end());
+	if (it == fdptrs_.end())
+	{
+		LOGW("removePoll can not find fd %d .", fdptr->fd());
+		return;
+	}
 	assert(fdptr == it->second);
 
 	int idx = fdptr->index();
@@ -147,7 +152,7 @@ void PollerLoop::pollLoop()
 {
 	LOGD("PollerLoop enter.");
 
-	static const int TM = 5000;
+	static const int TM = 500;
 	MicroSecond delay(TM);
 
 	sigPtr_->open();
@@ -232,8 +237,11 @@ void PollerLoop::pollWakeup()
 	{
 #ifdef WIN32
 		int idx = sigPtr_->index();
-		struct pollfd& pfd = pollfds_[idx];
-		WSASetEvent(pfd.wevent);
+		if (idx >= 0 && idx < pollfds_.size())
+		{
+			struct pollfd& pfd = pollfds_[idx];
+			WSASetEvent(pfd.wevent);
+		}
 #else
 		sigPtr_->signal();
 #endif

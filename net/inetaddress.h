@@ -6,6 +6,8 @@
 class InetAddress
 {
 public:
+	static InetAddress NULL_ADDR;
+
 	InetAddress(UInt16 port = 0);
 	InetAddress(const std::string& ip, UInt16 port);
 	InetAddress(const struct sockaddr_in& addr) : sockaddr_(addr) {};

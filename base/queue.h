@@ -135,6 +135,7 @@ void Queue<QDATA>::clear()
 	Lock lock(mutex_);
 	queue_.clear();
 	sPut_.on();
+	sGet_.off();
 }
 
 #endif

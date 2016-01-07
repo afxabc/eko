@@ -18,7 +18,7 @@ public:
 	Udp(PollerLoop* loop, UInt32 bufSize = defaultRecvSize, UInt32 sendPend = 1);
 	~Udp(void);
 
-	bool open(UInt16 port = 0);
+	bool open(InetAddress local = InetAddress::NULL_ADDR);
 	void close();
 	int sendData(InetAddress peer, const char* data, int len);
 

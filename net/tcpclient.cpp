@@ -124,6 +124,9 @@ void TcpClient::closeInLoop()
 	so_linger.l_onoff = 0;
 	so_linger.l_linger = 0;
 	setsockopt(*fdptr_, SOL_SOCKET, SO_LINGER, (const char*)&so_linger, sizeof so_linger);
+	
+	shutdown(*fdptr_, SD_RECEIVE);
+	shutdown(*fdptr_, SD_SEND);
 
 	fdptr_->close();
 }
@@ -198,11 +201,7 @@ int TcpClient::sendData(const char* data, int len)
 
 	if (conn_ != CONNECTED)
 		tryConnect();
-	else
-	{
-		fdptr_->pollWrite();
-		fdptr_->triggerWrite();
-	}
+	else fdptr_->pollWrite(true, true);	//for win32, force to write
 
 	return ret;
 }

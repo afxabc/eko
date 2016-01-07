@@ -1,6 +1,11 @@
 #include "log.h"
 #include "timestamp.h"
 
+void defaultPrint(Log::LEVEL level, const char* sformat)
+{
+	puts(sformat);
+}
+
 Log& LOG_ =  Log::defaultLog();
 
 Log& Log::defaultLog()
@@ -9,7 +14,7 @@ Log& Log::defaultLog()
 	return log;
 }
 
-Log::Log() : level_(L_INFO), print_(new LogPrint)
+Log::Log() : level_(L_INFO), print_(boost::bind(&defaultPrint, _1, _2)), defPrint_(boost::bind(&defaultPrint, _1, _2))
 {
 }
 
@@ -31,5 +36,5 @@ void Log::print(LEVEL level, const char* sformat, ...)
 
 	Lock lock(mutex_);
 	if (print_)
-		print_->print(level, buf);
+		print_(level, buf);
 }

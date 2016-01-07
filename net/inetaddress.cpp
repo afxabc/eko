@@ -1,5 +1,7 @@
 #include "inetaddress.h"
 
+InetAddress InetAddress::NULL_ADDR(0);
+
 InetAddress::InetAddress(UInt16 port)
 {
 	update("", port);

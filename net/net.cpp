@@ -59,7 +59,25 @@ int sock_bind(FD fd, const InetAddress& addr)
 
 int sock_sendto(FD fd, const InetAddress& peer, const char* data, int len)
 {
-	return sendto(fd, data, len, 0, peer.getSockaddr(), sizeof(sockaddr_in));
+	int slen = sendto(fd, data, len, 0, peer.getSockaddr(), sizeof(sockaddr_in));
+	
+#ifdef WIN32
+	int err = WSAGetLastError();
+	if (slen < 0 && err != WSAEWOULDBLOCK)
+		slen = -1;
+	else if (slen < 0)
+		slen = 0;
+#else
+	int err = errno;
+	if (slen < 0)
+	{
+        if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
+            slen = -1;
+        else slen = 0;
+	}
+#endif
+
+	return slen;
 }
 
 int sock_recvfrom(FD fd, InetAddress& from, Buffer& buffer)
@@ -129,7 +147,7 @@ int sock_send(FD fd, const Buffer& buff)		//>0:OK; =0:try; <0:error
 	int err = errno;
 	if (slen < 0)
 	{
-        if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
+        if (errno != EINTR && errno != EWOULDBLOCK && errno != EAGAIN)
             slen = -1;
         else slen = 0;
 	}
