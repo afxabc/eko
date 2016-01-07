@@ -32,6 +32,7 @@ public:
 
 private:
 	void handleFdRead();
+	void openInLoop(FD fd);
 
 private:
 	PollerLoop* loop_;

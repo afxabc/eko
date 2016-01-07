@@ -35,6 +35,8 @@ public:
 private:
 	void handleFdRead();
 	void handleFdWrite();
+	
+	void openInLoop(FD fd);
 	void closeInLoop();
 
 private:

@@ -17,44 +17,43 @@ TcpServer::~TcpServer(void)
 
 bool TcpServer::open(InetAddress local)
 {
-	if (!loop_->isInLoopThread())
-	{
-		if (isOpen())
-			return false;
-		isOpen_ = true;
-		loop_->runInLoop(boost::bind(&TcpServer::open, this, local));
-		return true;
-	}
+	assert(!local.isNull());
 
-	isOpen_ = true;
-	if (fdptr_->isValid())
+	if (isOpen() || fdptr_->isValid())
 		return false;
-
-	local_  = local;
-	assert(!local_.isNull());
 
 	FD fd = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if ( fd == INVALID_FD )
+	if (fd == INVALID_FD)
 	{
 		LOGE("%s socket error.", __FILE__);
-		isOpen_ = false;
 		return false;
 	}
 
-    fd_nonblock(fd, 1);
-
+	local_  = local;
 	if (sock_bind(fd, local_)!=0 || listen(fd, 5)<0)
 	{
 		LOGE("%s socket bind or listen.", __FILE__);
 		closefd(fd);
-		isOpen_ = false;
 		return false;
 	}
 
-	*fdptr_ = fd;
-	fdptr_->pollRead();
+	isOpen_ = true;
+
+	if (!loop_->isInLoopThread())
+		loop_->runInLoop(boost::bind(&TcpServer::openInLoop, this, fd));
+	else openInLoop(fd);
 
 	return true;
+}
+
+void TcpServer::openInLoop(FD fd)
+{
+	assert(loop_->isInLoopThread());
+	assert(!fdptr_->isValid());
+
+	*fdptr_ = fd;
+	fdptr_->pollRead();
+    fd_nonblock(fd, 1);
 }
 
 void TcpServer::close()

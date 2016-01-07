@@ -21,45 +21,47 @@ Udp::~Udp(void)
 
 bool Udp::open(InetAddress local)
 {
-	if (!loop_->isInLoopThread())
-	{
-		if (isOpen())
-			return false;
-		isOpen_ = true;
-		loop_->runInLoop(boost::bind(&Udp::open, this, local));
-		return true;
-	}
-
-	isOpen_ = true;
-	if (fdptr_->isValid())
+	if (isOpen() || fdptr_->isValid())
 		return false;
 
-	local_ = local;
+	if (fdptr_->isValid())
+		return false;
 
 	FD fd = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if ( fd == INVALID_FD )
 	{
 		LOGE("%s socket error.", __FILE__);
-		isOpen_ = false;
 		return false;
 	}
 
-    fd_nonblock(fd, 1);
+	local_ = local;
 	if (!local_.isNull())
 	{
 		if (sock_bind(fd, local_) != 0)
 		{
 			LOGE("%s socket bind.", __FILE__);
 			closefd(fd);
-			isOpen_ = false;
 			return false;
 		}
 	}
 
-	*fdptr_ = fd;
-	fdptr_->pollRead();
+	isOpen_ = true;
+	
+	if (!loop_->isInLoopThread())
+		loop_->runInLoop(boost::bind(&Udp::openInLoop, this, fd));
+	else openInLoop(fd);
 
 	return true;
+}
+
+void Udp::openInLoop(FD fd)
+{
+	assert(loop_->isInLoopThread());
+	assert(!fdptr_->isValid());
+
+	*fdptr_ = fd;
+	fdptr_->pollRead();
+    fd_nonblock(fd, 1);
 }
 
 void Udp::close()

@@ -46,41 +46,28 @@ TcpClient::~TcpClient(void)
 
 bool TcpClient::open(InetAddress peer, UInt32 timeout)
 {
-	if (!loop_->isInLoopThread())
+	if (isOpen() || fdptr_->isValid())
+		return false;
+
+	FD fd = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if ( fd == INVALID_FD )
 	{
-		if (isOpen())
-			return false;
-		isOpen_ = true;
-		loop_->runInLoop(boost::bind(&TcpClient::open, this, peer, timeout));
-		return true;
+		LOGE("%s socket error.", __FILE__);
+		return false;
 	}
 
 	isOpen_ = true;
-	if (fdptr_->isValid())
-		return false;
-
+	timeOut_ = timeout;
+	conn_ = NONE;
 	peer_  = peer;
 #ifdef WIN32
 	if (peer.getIPInt() == 0)
 		peer_ = InetAddress("127.0.0.1", peer.getPort());
 #endif
 
-	timeOut_ = timeout;
-
-	FD fd = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if ( fd == INVALID_FD )
-	{
-		LOGE("%s socket error.", __FILE__);
-		isOpen_ = false;
-		return false;
-	}
-
-    fd_nonblock(fd, 1);
-	*fdptr_ = fd;
-	fdptr_->pollRead();
-
-	conn_ = NONE;
-	tryConnect();
+	if (!loop_->isInLoopThread())
+		loop_->runInLoop(boost::bind(&TcpClient::openInLoop, this, fd));
+	else openInLoop(fd);
 
 	return true;
 }
@@ -88,6 +75,18 @@ bool TcpClient::open(InetAddress peer, UInt32 timeout)
 bool TcpClient::open(const char* addr, UInt16 port, UInt32 timeout)
 {
 	return open(InetAddress(addr, port), timeout);
+}
+
+void TcpClient::openInLoop(FD fd)
+{
+	assert(loop_->isInLoopThread());
+	assert(!fdptr_->isValid());
+
+	*fdptr_ = fd;
+	fdptr_->pollRead();
+
+    fd_nonblock(fd, 1);
+	tryConnect();
 }
 
 void TcpClient::close()

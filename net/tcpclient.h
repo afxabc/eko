@@ -63,8 +63,10 @@ private:
 	void sendBuffer();
 	void handleFdRead();
 	void handleFdWrite();
-	void closeInLoop();
 	void handleConnectResult(bool conn, bool tmOut = false);
+
+	void openInLoop(FD fd);
+	void closeInLoop();
 
 private:
 	PollerLoop* loop_;
