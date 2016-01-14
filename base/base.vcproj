@@ -172,6 +172,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ratecounter.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\serial.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\signal.cpp"
 				>
 			</File>
@@ -219,6 +227,14 @@
 			</File>
 			<File
 				RelativePath=".\queue.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ratecounter.h"
+				>
+			</File>
+			<File
+				RelativePath=".\serial.h"
 				>
 			</File>
 			<File

@@ -1,8 +1,8 @@
 #ifndef NET_RATE_COUNT_H_
 #define NET_RATE_COUNT_H_
 
-#include "base/timestamp.h"
-#include "base/queue.h"
+#include "timestamp.h"
+#include "queue.h"
 
 class RateCounter
 {

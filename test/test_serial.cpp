@@ -1,15 +1,13 @@
-#include "net/udp.h"
-#include "net/pollerloop.h"
-#include "base/ratecounter.h"
+
 #include "base/log.h"
 #include "base/thread.h"
 #include "base/signal.h"
 #include "base/md5.h"
+#include "base/serial.h"
+#include "base/ratecounter.h"
 
 #include <string>
 
-static const UInt16 svrPort = 17766;
-static InetAddress peer;
 static Signal sg;
 static bool run = false;
 static bool pause_ = false;
@@ -18,13 +16,12 @@ static UInt32 lost;
 static RateCounter rateCounter(1024);
 static int waitTime_ = 0;
 
-static void sendThread(UdpPtr uptr)
+static void sendThread(SerialPtr sptr)
 {
     static const int MAX_BUF = 65000;
     char buf[MAX_BUF+128];
 
     LOGI("send thread enter.");
-    uptr->open(peer);
     sg.on();
     int num = 0;
     epnum = 0;
@@ -50,11 +47,11 @@ static void sendThread(UdpPtr uptr)
         int slen = 0;
         do
         {
-            slen = uptr->sendData(peer, buf, len);
+            slen = sptr->sendData(buf, len);
             if (slen == 0)
             {
              //   LOGI("send pending ...");
-                sg.wait(10);
+                sg.wait(100);
             }
 			//else LOGI("send =======");
         }
@@ -62,11 +59,11 @@ static void sendThread(UdpPtr uptr)
 
         num++;
     }
-    uptr->close();
+
     LOGI("send thread quit.");
 }
 
-static void handleRead(InetAddress addr, char* buf, int len)
+static void handleRead(char* buf, int len)
 {
 	rateCounter.count(len);
 
@@ -86,28 +83,28 @@ static void handleRead(InetAddress addr, char* buf, int len)
 //	else LOGI("recv from %s : %d", addr.toString().c_str(), len);
 }
 
-void test_udp(const char* str)
+void test_serial(const char* str)
 {
-    sock_init();
-
+	const char* ttyName = str;
     if (!str)
     {
-        printf("enter peer ip : ");
+        printf("enter tty name : ");
         char line[64]; // room for 20 chars + '\0'
         fgets(line, sizeof(line)-1, stdin);
-		if (strlen(line) < 4)
-			peer = InetAddress("127.0.0.1", svrPort);
-        else peer = InetAddress(line, svrPort);
+		if (strlen(line) >= 4)
+			ttyName = line;
+#ifdef WIN32
+		else ttyName = "COM4";
+#else
+		else ttyName = "/dev/ttyS1";
+#endif
     }
-    else peer = InetAddress(str, svrPort);
 
-    PollerLoop loop;
-    UdpPtr uptr(new Udp(&loop));
-    uptr->setReadCallback(boost::bind(&handleRead, _1, _2, _3));
+    SerialPtr sptr(new Serial());
+	sptr->open(ttyName);
+    sptr->setReadCallback(boost::bind(&handleRead, _1, _2));
 
     Thread thread;
-
-    loop.loopInThread();
 
     bool test = true;
     while (test)
@@ -119,7 +116,7 @@ void test_udp(const char* str)
         case 'O':
             run = true;
 			waitTime_ = 0;
-            thread.start(boost::bind(&sendThread, uptr));
+            thread.start(boost::bind(&sendThread, sptr));
             break;
         case 'l':
         case 'L':
@@ -162,23 +159,9 @@ void test_udp(const char* str)
             sg.on();
             thread.stop();
             break;
-        default:
-            if (ch > '0' && ch <= '9')
-            {
-                run = false;
-                sg.on();
-                thread.stop();
-
-                uptr.reset(new Udp(&loop, Udp::defaultRecvSize, ch-'0'));
-                uptr->setReadCallback(boost::bind(&handleRead, _1, _2, _3));
-
-                run = true;
-                thread.start(boost::bind(&sendThread, uptr));
-            }
         }
     }
 
-    uptr.reset();
-    loop.quitLoop();
+    sptr.reset();
 
 }

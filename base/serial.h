@@ -1,15 +1,15 @@
 #ifndef NET_POLLER_SERIAL_H_
 #define NET_POLLER_SERIAL_H_
 
-#include "pollerfd.h"
-#include "base/buffer.h"
-#include "base/signal.h"
-#include "base/timestamp.h"
+#include "buffer.h"
+#include "signal.h"
+#include "timestamp.h"
+#include "functorloop.h"
 
-class PollerLoop;
 
 typedef boost::function<void(char*, int)> SerialReadCallback;
 typedef boost::function<void(int)> SerialSendCallback;
+typedef boost::function<void(UInt16, UInt32)> SerialEventCallback;
 
 class Serial
 {
@@ -67,8 +67,22 @@ enum STOPBIT
 	BS_TWO
 };
 
+//´®¿ÚÐÅºÅ
+//CTS, BREAK, ERR, RING
+//linux 
+enum BEVENTS
+{
+	BE_CTS,
+	BE_DSR,
+};
+
+#ifndef WIN32
+	typedef int HANDLE;
+#define INVALID_HANDLE_VALUE -1
+#endif
+
 public:
-	Serial(PollerLoop* loop, int sendBuffInitSize = 4096);
+	Serial(int sendBuffInitSize = 4096);
 	~Serial(void);
 
 public:
@@ -78,7 +92,7 @@ public:
 
 	bool isOpen()
 	{
-		return isOpen_;
+		return (fd_!=INVALID_HANDLE_VALUE);
 	}
 
 	void setReadCallback(const SerialReadCallback& cb)
@@ -91,31 +105,44 @@ public:
 		cbSend_ = cb;
 	}
 
-	FD fd() const
-	{ return fdptr_->fd(); }
+	void setEventCallback(const SerialEventCallback& cb)
+	{
+		cbEvent_ = cb;
+	}
+
+	HANDLE fd() const
+	{ return fd_; }
 
 private:
-	void registerInLoop(Fd fd);
-	void closeInLoop();
+	void loop();
+	void signalClose();
 
-	void sendBuffer();
 	void handleFdRead();
 	void handleFdWrite();
 
 private:
-	PollerLoop* loop_;
-	PollerFdPtr fdptr_;
-
-	Buffer ttyName_;
+	HANDLE fd_;
+	Thread thread_;
+	Mutex mutex_;
 
 	SerialReadCallback cbRead_;
 	SerialSendCallback cbSend_;
+	SerialEventCallback cbEvent_;
 
-	static const int MAX_SENDBUFF_SIZE = 256*1024;
+	static const int MAX_SENDBUFF_SIZE = 4*1024;
 	Mutex mutexSend_;
 	Buffer sendBuff_;
 
-	bool isOpen_;
+#ifdef WIN32
+	OVERLAPPED ov_;
+	OVERLAPPED ovRW_;
+	HANDLE evWrite_;
+	HANDLE evClose_;
+	DCB bakOption_;
+#else
+	struct termios bakOption_;
+#endif
+
 };
 
 typedef boost::shared_ptr<Serial> SerialPtr;

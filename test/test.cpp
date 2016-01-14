@@ -9,6 +9,7 @@ extern void test_functorloop();
 extern void test_signal();
 extern void test_udp(const char*);
 extern void test_tcp(const char*);
+extern void test_serial(const char*);
 
 int main(int argc, const char* argv[])
 {
@@ -19,9 +20,10 @@ int main(int argc, const char* argv[])
 //	test_functor();
 //	test_functorloop();
 //	test_signal();
-	test_udp(argv[1]);
+//	test_udp(argv[1]);
 //	test_tcp(argv[1]);
 //	test_bits();
+	test_serial(argv[1]);
 
 #ifdef WIN32
     system("pause");

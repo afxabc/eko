@@ -168,22 +168,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\ratecounter.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\serial.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath=".\tcpclient.cpp"
 				>
 			</File>
@@ -220,22 +204,6 @@
 			<File
 				RelativePath=".\pollersig.h"
 				>
-			</File>
-			<File
-				RelativePath=".\ratecounter.h"
-				>
-			</File>
-			<File
-				RelativePath=".\serial.h"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCustomBuildTool"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\tcpclient.h"
