@@ -6,6 +6,13 @@
 #include "timestamp.h"
 #include "functorloop.h"
 
+#ifndef WIN32
+#include	<termios.h>    /*PPSIX 终端控制定义*/
+#include	<poll.h>
+#include	<unistd.h>
+#include	<sys/ioctl.h>
+#endif
+
 
 typedef boost::function<void(char*, int)> SerialReadCallback;
 typedef boost::function<void(int)> SerialSendCallback;
@@ -13,6 +20,7 @@ typedef boost::function<void(UInt16, UInt32)> SerialEventCallback;
 
 class Serial
 {
+public:
 //波特率
 enum BAUDRATE
 {
@@ -36,15 +44,14 @@ enum BAUDRATE
 };
 
 //数据位数
-//win32 8,7,6,5,4
-//linux CS8,CS7,CS6,CS5,CS4
+//win32 8,7,6,5
+//linux CS8,CS7,CS6,CS5
 enum BYTESIZE
 {
 	BB_8,
 	BB_7,
 	BB_6,
-	BB_5,
-	BB_4
+	BB_5
 };
 
 //奇偶校验
@@ -117,8 +124,14 @@ private:
 	void loop();
 	void signalClose();
 
-	void handleFdRead();
-	void handleFdWrite();
+	void handleFdRead(int cbInQue = 0);
+	void handleFdWrite(int cbOutQue = 0);
+	void handleFdClose();
+
+#ifdef WIN32
+	void handleAfterWrite();
+	void resetOverlapped(OVERLAPPED& ov);
+#endif
 
 private:
 	HANDLE fd_;
@@ -133,14 +146,22 @@ private:
 	Mutex mutexSend_;
 	Buffer sendBuff_;
 
+	static const int MAX_QUE_SIZE = 1024;
 #ifdef WIN32
 	OVERLAPPED ov_;
-	OVERLAPPED ovRW_;
+	OVERLAPPED ovRead_;
+	OVERLAPPED ovWrite_;
 	HANDLE evWrite_;
 	HANDLE evClose_;
 	DCB bakOption_;
+	int szInQue_;
+	int szOutQue_;
+	char outQueBuff_[MAX_QUE_SIZE];
+	bool writePended_;
 #else
 	struct termios bakOption_;
+	int evClose_[2];
+	int evWrite_[2];
 #endif
 
 };

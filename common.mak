@@ -4,7 +4,8 @@ STAGE_DEBUG := 0
 
 #CROSSBUILD := /others/arm-gcc/2009q3/bin/arm-none-linux-gnueabi-
 
-CROSSBUILD := /others/arm-gcc/3.4.1/bin/arm-linux-
+#CROSSBUILD := /others/arm-gcc/3.4.1/bin/arm-linux-
+CROSSBUILD := /LA248000/miud-arm9200/arm-gcc-3.4.1/bin/arm-linux-
 #3.4.1 FLAG
 FLAGS := -DSIG_PIPE 
 

@@ -180,7 +180,11 @@ void print_2(int val2)
 			printf("0");
 	}
 }
+
+#ifdef WIN32
 #include <winbase.h>
+#endif
+
 void test_bits()
 {
 	initBitChar();
@@ -226,7 +230,12 @@ void test_bits()
 	err = compareBuffer(sBuff, rBuff, 1);
 	assert(err==0);
 
+#ifdef WIN32
 	srand(GetTickCount());
+#else
+	srand((unsigned)time(NULL));
+#endif
+
 	char* pb = rBuff.beginRead();
 	char* ps = sBuff.beginRead();
 

@@ -123,9 +123,10 @@ void TcpClient::closeInLoop()
 	so_linger.l_onoff = 0;
 	so_linger.l_linger = 0;
 	setsockopt(*fdptr_, SOL_SOCKET, SO_LINGER, (const char*)&so_linger, sizeof so_linger);
-	
+#ifdef WIN32
 	shutdown(*fdptr_, SD_RECEIVE);
 	shutdown(*fdptr_, SD_SEND);
+#endif
 
 	fdptr_->close();
 }

@@ -1,16 +1,17 @@
 #include "serial.h"
 
-
 #ifdef WIN32
-static UInt32 gBaudrate[] = {1000000, 921600, 576000, 500000, 460800, 230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 600, 300};
-static BYTE gByteSize[] = {8, 7, 6, 5, 4};
-static BYTE gParity[] = {NOPARITY, ODDPARITY, EVENPARITY, SPACEPARITY};
-static BYTE gStopBit[] = {ONESTOPBIT, TWOSTOPBITS};
+static const UInt32 gBaudrate[] = {1000000, 921600, 576000, 500000, 460800, 230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 600, 300};
+static const BYTE gByteSize[] = {8, 7, 6, 5};
+static const BYTE gParity[] = {NOPARITY, ODDPARITY, EVENPARITY, SPACEPARITY};
+static const BYTE gStopBit[] = {ONESTOPBIT, TWOSTOPBITS};
 #else
-static speed_t gBaudrate[] = {B1000000, B921600, B576000, B500000, B460800, B230400, B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B600, B300};
-static BYTE gByteSize[] = {CS8, CS7, CS6, CS5, CS4};
+static const speed_t gBaudrate[] = {B1000000, B921600, B576000, B500000, B460800, B230400, B115200, B57600, B38400, B19200, B9600, B4800, B2400, B1200, B600, B300};
+static const BYTE gByteSize[] = {CS8, CS7, CS6, CS5};
 #endif
 
+
+static const UInt32 QUE_SIZE[] = {1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 960, 480, 240, 120, 60, 30};
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -19,10 +20,13 @@ Serial::Serial(int sendBuffInitSize)
 	, sendBuff_(sendBuffInitSize)
 {
 #ifdef WIN32
+	writePended_ = false;
 	ov_.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	ovRW_.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	ovRead_.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	ovWrite_.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	evWrite_ = CreateEvent(NULL, TRUE, FALSE, NULL);
 	evClose_ = CreateEvent(NULL, TRUE, FALSE, NULL);
+	szInQue_ = szOutQue_ = MAX_QUE_SIZE;
 #endif
 }
 
@@ -31,7 +35,8 @@ Serial::~Serial(void)
 	close();
 #ifdef WIN32
 	CloseHandle(ov_.hEvent);
-	CloseHandle(ovRW_.hEvent);
+	CloseHandle(ovRead_.hEvent);
+	CloseHandle(ovWrite_.hEvent);
 	CloseHandle(evWrite_);
 	CloseHandle(evClose_);
 #endif
@@ -60,15 +65,15 @@ bool Serial::open(const char* ttyName, BAUDRATE baudRate, BYTESIZE byteSize, PAR
 		return false;
 
 	COMMTIMEOUTS tmout;
-	tmout.ReadIntervalTimeout = 1000;
-	tmout.ReadTotalTimeoutMultiplier = 1000;
-	tmout.ReadTotalTimeoutConstant = 1000;
-	tmout.WriteTotalTimeoutMultiplier = 1000;
-	tmout.WriteTotalTimeoutConstant = 1000;
+	tmout.ReadIntervalTimeout = 10;
+	tmout.ReadTotalTimeoutMultiplier = 10;
+	tmout.ReadTotalTimeoutConstant = 10;
+	tmout.WriteTotalTimeoutMultiplier = 10;
+	tmout.WriteTotalTimeoutConstant = 10;
 	if (!SetCommTimeouts(fd_, &tmout))
 		LOGW("SetCommTimeouts error !");
 
-	if (!SetCommMask(fd_, EV_CTS|EV_DSR|EV_RXCHAR)) //|EV_TXEMPTY
+	if (!SetCommMask(fd_, EV_RXCHAR)) //|EV_TXEMPTY
 		LOGW("SetCommMask error !");
 
     bakOption_.DCBlength = sizeof(DCB);
@@ -87,15 +92,24 @@ bool Serial::open(const char* ttyName, BAUDRATE baudRate, BYTESIZE byteSize, PAR
 	if (!SetCommState(fd_, &dcb))
 		LOGW("SetCommState error !");
 
+	szOutQue_ = (QUE_SIZE[baudRate]>MAX_QUE_SIZE)?MAX_QUE_SIZE:QUE_SIZE[baudRate];
+	SetupComm(fd_, szInQue_, szOutQue_);
     PurgeComm(fd_, PURGE_RXCLEAR | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_TXABORT);
 	
+	resetOverlapped(ov_);
+	resetOverlapped(ovRead_);
+	resetOverlapped(ovWrite_);
+	ResetEvent(evWrite_);
+	writePended_ = false;
+	ResetEvent(evClose_);
+
 #else
-    fd_ = open(ttyName, O_RDWR | O_NOCTTY);
+	fd_ = ::open(ttyName, O_RDWR | O_NOCTTY);
     if (fd_ == INVALID_HANDLE_VALUE)
 		return false;
 
     int save_file_flags;
-    save_file_flags = fcntl(mFd, F_GETFL);
+    save_file_flags = fcntl(fd_, F_GETFL);
     save_file_flags |= O_NONBLOCK;
     fcntl(fd_, F_SETFL, save_file_flags);//非阻塞
 
@@ -143,13 +157,23 @@ bool Serial::open(const char* ttyName, BAUDRATE baudRate, BYTESIZE byteSize, PAR
     options.c_cc[VMIN] = 0;
     tcsetattr(fd_, TCSANOW, &options);
     tcflush(fd_, TCIOFLUSH);
+	
+	if (pipe(evClose_) < 0)
+	{
+		LOGE("%s pipe evClose_ error.", __FILE__);
+		return false;
+	}
+
+	if (pipe(evWrite_) < 0)
+	{
+		::close(evClose_[0]);
+		::close(evClose_[1]);
+		LOGE("%s pipe evWrite_ error.", __FILE__);
+		return false;
+	}
 #endif
 
 	sendBuff_.erase();
-	ResetEvent(ov_.hEvent);
-	ResetEvent(ovRW_.hEvent);
-	ResetEvent(evWrite_);
-	ResetEvent(evClose_);
 	if (!thread_.start(boost::bind(&Serial::loop, this)))
 	{
 		LOGE("Serial thread start error !!");
@@ -164,11 +188,19 @@ void Serial::loop()
 {
 
 #ifdef WIN32
-	HANDLE hEvents[3] = {evClose_, ov_.hEvent, evWrite_};
+	static const int WAIT_EVENT = 4;
+	HANDLE hEvents[WAIT_EVENT] = {evClose_, ov_.hEvent, evWrite_, ovWrite_.hEvent};
 	DWORD evMask;
 	DWORD err;
 	COMSTAT comstat;
 	DWORD CommEvent = 0;
+#else
+	static const int WAIT_EVENT = 3;
+	struct pollfd hEvents[WAIT_EVENT];
+	memset (hEvents, 0, sizeof(hEvents));
+	hEvents[0].fd = fd_;
+	hEvents[1].fd = evClose_[0];
+	hEvents[2].fd = evWrite_[0];
 #endif
 
 	bool run = true;
@@ -184,11 +216,13 @@ void Serial::loop()
 			//continue;
 		}
 
-		evMask = WaitForMultipleObjects(3, hEvents, FALSE, INFINITE);
+		evMask = WaitForMultipleObjects(WAIT_EVENT, hEvents, FALSE, INFINITE);
 		if (WAIT_FAILED == evMask || WAIT_TIMEOUT == evMask)
 		{
 			LOGW("WaitForMultipleObjects err=%X", GetLastError());
-			break;
+			run = false;
+			handleFdClose();
+			continue;
 		}
 
 		evMask = evMask-WAIT_OBJECT_0;
@@ -196,6 +230,7 @@ void Serial::loop()
 		{
 		case 0:			//evClose_
 			run = false;
+			handleFdClose();
 			break;
 		case 1:			//ov_.hEvent
 			CommEvent = 0;
@@ -207,42 +242,95 @@ void Serial::loop()
 				cbEvent_(BE_DSR, comstat.fDsrHold);
 			if (CommEvent & EV_RXCHAR)
 			{
-				if (comstat.cbInQue > 0)
-					handleFdRead();
-				else LOGW("EV_RXCHAR but cbInQue=0 !!");
+				handleFdRead(comstat.cbInQue);
 			}
 			break;
 		case 2:			//evWrite_
-			handleFdWrite();
+			ClearCommError(fd_, &err, &comstat);
+			handleFdWrite(comstat.cbOutQue);
+			break;
+		case 3:			//ovWrite_.hEvent
+			writePended_ = false;
+			handleAfterWrite();
 			break;
 		}
 #else
+		hEvents[0].revents = hEvents[1].revents = hEvents[2].revents = 0;
+		hEvents[0].events = hEvents[1].events = hEvents[2].events = POLLIN | POLLERR;
+		
+		if (sendBuff_.readableBytes() > 0)
+			hEvents[0].events |= POLLOUT;
+
+		int retval = poll (hEvents, WAIT_EVENT, 500);
+		if (retval < 0)
+		{
+			LOGW("poll err=%X", error_n());
+			run = false;
+			handleFdClose();
+			continue;
+		}
+		else if (retval == 0)
+			continue;		//超时
+
+		if (hEvents[0].revents & POLLIN)
+		{
+//			LOGD("poll 0");
+			handleFdRead();
+		}
+
+		if (hEvents[1].revents & POLLIN)		//evClose
+		{
+//			LOGD("poll 1");
+			run = false;
+			UInt64 val = 1;
+			read(hEvents[1].fd, &val, sizeof(val));
+			handleFdClose();
+		}
+
+		if ((hEvents[2].revents & POLLIN))		//evWrite
+		{
+//			LOGD("poll 2");
+			UInt64 val = 1;
+			read(hEvents[2].fd, &val, sizeof(val));
+			handleFdWrite();
+		}
+
+		if ((hEvents[0].revents & POLLOUT))		//evWrite
+		{
+//			LOGD("POLLOUT");
+			handleFdWrite();
+		}
 
 #endif
 	}
 }
 
-void Serial::handleFdRead()
+void Serial::handleFdRead(int cbInQue)
 {
 	int len = 0;
-	static const int MAX_BUF = 64;
-	char buf[MAX_BUF];
+	char buf[MAX_QUE_SIZE];
 
 #ifdef WIN32
+	if (cbInQue <= 0)
+	{
+//		LOGW("EV_RXCHAR but cbInQue=0 !!");
+		return;
+	}
 	DWORD err;
-	ResetEvent(ovRW_.hEvent);
-	BOOL res = ReadFile(fd_, buf, MAX_BUF, (LPDWORD)&len, &ovRW_);
+	resetOverlapped(ovRead_);
+	BOOL res = ReadFile(fd_, buf, szInQue_, (LPDWORD)&len, &ovRead_);
 	if (!res)  
 	{ 
 		DWORD err = GetLastError();
 		if (ERROR_IO_PENDING == err)
 		{
-			res = GetOverlappedResult(fd_, &ovRW_, (LPDWORD)&len, TRUE);		//阻塞至读完
+			res = GetOverlappedResult(fd_, &ovRead_, (LPDWORD)&len, TRUE);		//阻塞至读完
 			if (!res)
 			{
 				LOGW("handleFdRead GetOverlappedResult error !!");
 				return;
 			}
+			
 		}
 		else
 		{
@@ -251,7 +339,7 @@ void Serial::handleFdRead()
 		}
 	}
 #else
-    len = read(fd_, buf, MAX_BUF);
+    len = read(fd_, buf, MAX_QUE_SIZE);
 	if (len <= 0)
 	{
 		LOGW("ReadFile error err=%d!!", error_n());
@@ -263,53 +351,101 @@ void Serial::handleFdRead()
 		cbRead_(buf, len);					
 }
 
-void Serial::handleFdWrite()
+void Serial::handleFdWrite(int cbOutQue)
 {
 	int len = 0;
-	static const int MAX_SEND = 64;
-	int trySend = MAX_SEND;
+	int trySend = 1024;	//szOutQue_-cbOutQue;
 	if (trySend > sendBuff_.readableBytes())
 		trySend = sendBuff_.readableBytes();
 
-	{
-	Lock lock(mutexSend_);
+	assert(trySend >= 0);
+
+	
 #ifdef WIN32
-	ResetEvent(ovRW_.hEvent);
-	BOOL res = WriteFile(fd_, sendBuff_.beginRead(), trySend, (LPDWORD)&len, &ovRW_);
-	if (!res)  
-	{ 
-		DWORD err = GetLastError();
-		if (ERROR_IO_PENDING == err)
+	{
+		Lock lock(mutexSend_);
+		ResetEvent(evWrite_);
+		if (trySend > 0 && !writePended_)
 		{
-			res = GetOverlappedResult(fd_, &ovRW_, (LPDWORD)&len, TRUE);		//阻塞至读完
-			if (!res)
-			{
-				LOGW("GetOverlappedResult error !!");
+			resetOverlapped(ovWrite_);
+			BOOL res = WriteFile(fd_, sendBuff_.beginRead(), trySend, (LPDWORD)&len, &ovWrite_);
+			if (!res)  
+			{ 
+				DWORD err = GetLastError();
+				if (ERROR_IO_PENDING == err)
+					writePended_ = true;
+				else LOGW("WriteFile error err=%X!!", err);
 				return;
 			}
+			else handleAfterWrite();
 		}
-		else
+	}
+#else 
+	{
+		Lock lock(mutexSend_);
+		len = write(fd_, sendBuff_.beginRead(), trySend);
+		int err = error_n();
+		if (len < 0 && (EAGAIN != err || EWOULDBLOCK != err))
 		{
-			LOGW("WriteFile error err=%X!!", err);
+			LOGW("write error err=%d!!", error_n());
 			return;
 		}
+		if (len > 0)
+			sendBuff_.eraseFront(len);
 	}
-	sendBuff_.eraseFront(len);
-	if (sendBuff_.readableBytes() == 0)
-		ResetEvent(evWrite_);
-#else 
-    len = write(fd_, sendBuff_.beginRead(), trySend);
-	if (len <= 0)
-	{
-		LOGW("WriteFile error err=%d!!", error_n());
-		return;
-	}
-	sendBuff_.eraseFront(len);
+	if (cbSend_ && len > 0)
+		cbSend_(len);	
 #endif
+	
+
+}
+
+#ifdef WIN32
+
+void Serial::resetOverlapped(OVERLAPPED& ov)
+{
+	ResetEvent(ov.hEvent);
+	ov.Internal = ov.InternalHigh = ov.Offset = ov.OffsetHigh = 0;
+	ov.Pointer = NULL;
+}
+
+void Serial::handleAfterWrite()
+{
+	DWORD len;
+	writePended_ = false;
+	BOOL res = GetOverlappedResult(fd_, &ovWrite_, (LPDWORD)&len, FALSE);		//
+	if (!res)
+	{
+		LOGW("handleFdWrite GetOverlappedResult error !!");
+		return;
 	}
 
 	if (cbSend_)
 		cbSend_(len);	
+
+	Lock lock(mutexSend_);
+	sendBuff_.eraseFront(len);
+	if (sendBuff_.readableBytes() > 0)
+		SetEvent(evWrite_);
+}
+
+#endif
+
+void Serial::handleFdClose()
+{
+#ifdef WIN32
+    PurgeComm(fd_, PURGE_RXCLEAR | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_TXABORT);
+	SetCommState((HANDLE)fd_, &bakOption_);
+	CloseHandle(fd_);
+#else 
+	tcsetattr(fd_, TCSANOW, &bakOption_);
+	::close(fd_);
+	::close(evClose_[0]);
+	::close(evClose_[1]);
+	::close(evWrite_[0]);
+	::close(evWrite_[1]);
+#endif
+	fd_ = INVALID_HANDLE_VALUE;
 }
 
 void Serial::signalClose()
@@ -317,8 +453,9 @@ void Serial::signalClose()
 #ifdef WIN32
 	SetEvent(evClose_);
 #else 
+    UInt64 val = 1;
+	write(evClose_[1], &val, sizeof(val));
 #endif
-
 }
 
 void Serial::close()
@@ -331,16 +468,6 @@ void Serial::close()
 
 	signalClose();
 	thread_.stop();
-
-#ifdef WIN32
-	SetCommState((HANDLE)fd_, &bakOption_);
-	CloseHandle(fd_);
-#else 
-	tcsetattr(fd_, TCSANOW, &bakOption_);
-	close(fd_);
-#endif
-
-	fd_ = INVALID_HANDLE_VALUE;
 	sendBuff_.erase();
 }
 
@@ -361,6 +488,8 @@ int Serial::sendData(const char* data, int len)
 #ifdef WIN32
 	SetEvent(evWrite_);
 #else 
+    UInt64 val = 1;
+	write(evWrite_[1], &val, sizeof(val));
 #endif
 
 	return len;
