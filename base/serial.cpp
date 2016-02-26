@@ -280,7 +280,7 @@ void Serial::loop()
 
 		if (hEvents[1].revents & POLLIN)		//evClose
 		{
-//			LOGD("poll 1");
+			LOGD("poll 1");
 			run = false;
 			UInt64 val = 1;
 			read(hEvents[1].fd, &val, sizeof(val));

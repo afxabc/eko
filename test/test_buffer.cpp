@@ -93,9 +93,6 @@ void test_buffer()
     buff.eraseFront(2);
     CHECK_BUFFER(buff, "01234567abc");
 
-    buff.pushBack("efg");
-    CHECK_BUFFER(buff, "01234567abcefg");
-
     char obuf[128];
     int len = buff.takeFront(obuf, 7);
     CHECK_BUFFER(buff, "7abcefg");

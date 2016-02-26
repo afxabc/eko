@@ -2,10 +2,9 @@
 #include "base/log.h"
 #include "base/thread.h"
 #include "base/signal.h"
-#include "base/md5.h"
+#include "test.h"
 #include "base/serial.h"
 #include "base/ratecounter.h"
-
 #include <string>
 
 static Signal sg;
@@ -114,8 +113,8 @@ static void handleRead(char* buf, int len)
         //int num = *((int*)(buf+6));
         int num = 0;
         memcpy(&num, buf+6, 4);
-        if (num != epnum)
-            LOGE("recv num expect %d but %d.", epnum, num);
+ //       if (num != epnum)
+ //           LOGE("recv num expect %d but %d.", epnum, num);
         epnum = num+1;
   //      if (num % 10 == 0)
         //LOGI("recv packet %d .", num);
